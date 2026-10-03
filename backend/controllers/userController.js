@@ -6,7 +6,7 @@ export const getUsers = async (req, res, next) => {
     if (!isConnected()) {
       return res.status(503).json({
         success: false,
-        message: 'Database connection is not configured.',
+        message: 'Database is not connected. Please verify MongoDB connection.',
       });
     }
 
@@ -66,7 +66,7 @@ export const getUserById = async (req, res, next) => {
     if (!isConnected()) {
       return res.status(503).json({
         success: false,
-        message: 'Database connection is not configured.',
+        message: 'Database is not connected. Please verify MongoDB connection.',
       });
     }
 
@@ -93,7 +93,7 @@ export const updateUser = async (req, res, next) => {
     if (!isConnected()) {
       return res.status(503).json({
         success: false,
-        message: 'Database connection is not configured.',
+        message: 'Database is not connected. Please verify MongoDB connection.',
       });
     }
 
@@ -143,7 +143,7 @@ export const deleteUser = async (req, res, next) => {
     if (!isConnected()) {
       return res.status(503).json({
         success: false,
-        message: 'Database connection is not configured.',
+        message: 'Database is not connected. Please verify MongoDB connection.',
       });
     }
 

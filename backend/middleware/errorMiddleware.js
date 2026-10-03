@@ -5,8 +5,7 @@ export const requireDb = (req, res, next) => {
   if (!isConnected()) {
     return res.status(503).json({
       success: false,
-      message: 'Database connection is not configured.',
-      info: 'MongoDB Atlas is not configured yet. The frontend is running in mock mode with complete realistic data.',
+      message: 'Database connection is temporarily unavailable. Please verify MongoDB connection.',
     });
   }
   next();

@@ -106,18 +106,27 @@ export const authService = {
   },
 
   // Helper for ADBMS & Frontend demo: switch between student, organizer, admin in 1-click!
-  switchDemoRole(role: UserRole): User {
-    let targetUser: User;
-    if (role === 'admin') {
-      targetUser = mockUsers[0]; // Dr. Sarah Jenkins
-    } else if (role === 'organizer') {
-      targetUser = mockUsers[1]; // Prof. Marcus Vance
-    } else {
-      targetUser = mockUsers[4]; // Alex Johnson (student)
+  async switchDemoRole(role: UserRole): Promise<User> {
+    if (isMockMode()) {
+      let targetUser: User;
+      if (role === 'admin') {
+        targetUser = mockUsers[0]; // Dr. Sarah Jenkins
+      } else if (role === 'organizer') {
+        targetUser = mockUsers[1]; // Prof. Marcus Vance
+      } else {
+        targetUser = mockUsers[4]; // Alex Johnson (student)
+      }
+
+      localStorage.setItem('cems_user', JSON.stringify(targetUser));
+      localStorage.setItem('cems_token', `mock_token_${targetUser._id}`);
+      return targetUser;
     }
 
-    localStorage.setItem('cems_user', JSON.stringify(targetUser));
-    localStorage.setItem('cems_token', `mock_token_${targetUser._id}`);
-    return targetUser;
+    let email = 'alex@student.cems.edu';
+    if (role === 'admin') email = 'admin@cems.edu';
+    else if (role === 'organizer') email = 'vance@cems.edu';
+
+    const { user } = await this.login(email, 'password123');
+    return user;
   },
 };

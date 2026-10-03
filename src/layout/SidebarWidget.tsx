@@ -6,8 +6,8 @@ export default function SidebarWidget() {
   const { role, switchDemoRole, currentUser } = useAuth();
   const navigate = useNavigate();
 
-  const handleSwitch = (newRole: UserRole) => {
-    switchDemoRole(newRole);
+  const handleSwitch = async (newRole: UserRole) => {
+    await switchDemoRole(newRole);
     if (newRole === 'admin') navigate('/admin/dashboard');
     else if (newRole === 'organizer') navigate('/organizer/dashboard');
     else navigate('/student/dashboard');

@@ -70,7 +70,7 @@ app.get('/api/health', (req, res) => {
     data: {
       status: 'healthy',
       system: 'College Event Management System (CEMS) API',
-      database: isConnected() ? 'Connected' : 'Disconnected (Mock Mode Active)',
+      database: isConnected() ? 'Connected' : 'Disconnected',
       timestamp: new Date().toISOString(),
       environment: process.env.NODE_ENV || 'development',
     },

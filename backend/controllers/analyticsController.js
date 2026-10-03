@@ -9,7 +9,7 @@ export const getAdminAnalytics = async (req, res, next) => {
     if (!isConnected()) {
       return res.status(503).json({
         success: false,
-        message: 'Database connection is not configured.',
+        message: 'Database is not connected. Please verify MongoDB connection.',
       });
     }
 
@@ -29,7 +29,7 @@ export const getOrganizerAnalytics = async (req, res, next) => {
     if (!isConnected()) {
       return res.status(503).json({
         success: false,
-        message: 'Database connection is not configured.',
+        message: 'Database is not connected. Please verify MongoDB connection.',
       });
     }
 
@@ -49,7 +49,7 @@ export const getStudentAnalytics = async (req, res, next) => {
     if (!isConnected()) {
       return res.status(503).json({
         success: false,
-        message: 'Database connection is not configured.',
+        message: 'Database is not connected. Please verify MongoDB connection.',
       });
     }
 
@@ -89,7 +89,7 @@ export const getEventAnalytics = async (req, res, next) => {
     if (!isConnected()) {
       return res.status(503).json({
         success: false,
-        message: 'Database connection is not configured.',
+        message: 'Database is not connected. Please verify MongoDB connection.',
       });
     }
 
@@ -122,7 +122,7 @@ export const getDatabaseInsights = async (req, res, next) => {
     if (!isConnected()) {
       return res.status(503).json({
         success: false,
-        message: 'Database connection is not configured.',
+        message: 'Database is not connected. Please verify MongoDB connection.',
       });
     }
 

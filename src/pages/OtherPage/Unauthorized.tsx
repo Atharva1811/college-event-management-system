@@ -27,8 +27,8 @@ export default function Unauthorized() {
           Return Home
         </Link>
         <button
-          onClick={() => {
-            switchDemoRole('admin');
+          onClick={async () => {
+            await switchDemoRole('admin');
             window.location.href = '/admin/dashboard';
           }}
           className="px-5 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold shadow-md shadow-brand-500/20 transition-all cursor-pointer"

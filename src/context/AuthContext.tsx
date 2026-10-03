@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
 import { authService } from '../services/authService';
+import { isMockMode } from '../services/api';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -19,7 +20,7 @@ interface AuthContextType {
   }) => Promise<User>;
   logout: () => void;
   updateProfile: (updated: Partial<User>) => void;
-  switchDemoRole: (role: UserRole) => User;
+  switchDemoRole: (role: UserRole) => Promise<User>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -38,13 +39,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         const storedUser = localStorage.getItem('cems_user');
 
         if (storedToken && storedUser) {
-          setToken(storedToken);
-          setCurrentUser(JSON.parse(storedUser));
+          // If stored token is a legacy mock token and we are now in normal mode, clear it
+          if (storedToken.startsWith('mock_') && !isMockMode()) {
+            localStorage.removeItem('cems_token');
+            localStorage.removeItem('cems_user');
+            setToken(null);
+            setCurrentUser(null);
+          } else {
+            setToken(storedToken);
+            setCurrentUser(JSON.parse(storedUser));
+          }
         } else {
-          // In mock mode demo: pre-login as student Alex Johnson for immediate exploration
-          const user = await authService.getMe();
-          setCurrentUser(user);
-          setToken(localStorage.getItem('cems_token') || 'mock_token_init');
+          if (isMockMode()) {
+            const user = await authService.getMe();
+            setCurrentUser(user);
+            setToken(localStorage.getItem('cems_token') || 'mock_token_init');
+          } else {
+            setCurrentUser(null);
+            setToken(null);
+          }
         }
       } catch (err) {
         console.error('Failed to initialize auth state:', err);
@@ -101,11 +114,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  const switchDemoRole = (targetRole: UserRole): User => {
-    const user = authService.switchDemoRole(targetRole);
-    setCurrentUser(user);
-    setToken(`mock_token_${user._id}`);
-    return user;
+  const switchDemoRole = async (targetRole: UserRole): Promise<User> => {
+    setIsLoading(true);
+    try {
+      const user = await authService.switchDemoRole(targetRole);
+      setCurrentUser(user);
+      setToken(localStorage.getItem('cems_token'));
+      return user;
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const role: UserRole = currentUser?.role || 'student';

@@ -7,7 +7,7 @@ export const register = async (req, res, next) => {
     if (!isConnected()) {
       return res.status(503).json({
         success: false,
-        message: 'Database connection is not configured.',
+        message: 'Database is not connected. Please verify MongoDB connection.',
       });
     }
 
@@ -36,7 +36,7 @@ export const login = async (req, res, next) => {
     if (!isConnected()) {
       return res.status(503).json({
         success: false,
-        message: 'Database connection is not configured.',
+        message: 'Database is not connected. Please verify MongoDB connection.',
       });
     }
 

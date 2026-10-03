@@ -8,17 +8,22 @@ import Registration from '../models/Registration.js';
 
 dotenv.config();
 
-const seedData = async () => {
+import url from 'url';
+
+export const runSeed = async (isStandalone = false) => {
   const uri = process.env.MONGO_URI;
   if (!uri || uri.trim() === '' || uri.includes('<username>')) {
     console.error('❌ Cannot run seed script: MONGO_URI is not set in .env');
-    process.exit(1);
+    if (isStandalone) process.exit(1);
+    return;
   }
 
   try {
-    console.log('Connecting to MongoDB...');
-    await mongoose.connect(uri);
-    console.log('Connected! Purging old data...');
+    if (mongoose.connection.readyState !== 1) {
+      console.log('Connecting to MongoDB...');
+      await mongoose.connect(uri);
+    }
+    console.log('🌱 Connected to MongoDB! Initializing CEMS seed data...');
 
     await Promise.all([
       User.deleteMany(),
@@ -30,7 +35,7 @@ const seedData = async () => {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash('password123', salt);
 
-    // 1. Create Admin
+    // 1. Create Admins
     const admin = await User.create({
       name: 'Dr. Sarah Jenkins',
       email: 'admin@cems.edu',
@@ -41,8 +46,27 @@ const seedData = async () => {
       avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150',
     });
 
+    await User.create({
+      name: 'CEMS Administrator',
+      email: 'admin@college.edu',
+      password: passwordHash,
+      role: 'admin',
+      phone: '+1 555-0101',
+      department: 'Computer Science',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+    });
+
     // 2. Create Organizers
     const organizers = await User.insertMany([
+      {
+        name: 'Event Organizer',
+        email: 'organizer@college.edu',
+        password: passwordHash,
+        role: 'organizer',
+        phone: '+1 555-0200',
+        department: 'Computer Science',
+        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
+      },
       {
         name: 'Prof. Marcus Vance',
         email: 'vance@cems.edu',
@@ -72,8 +96,9 @@ const seedData = async () => {
       },
     ]);
 
-    // 3. Create Students (15 students)
+    // 3. Create Students (16 students)
     const studentData = [
+      { name: 'Campus Student', email: 'student@college.edu', department: 'Computer Science' },
       { name: 'Alex Johnson', email: 'alex@student.cems.edu', department: 'Computer Science' },
       { name: 'Priya Sharma', email: 'priya@student.cems.edu', department: 'AI & Data Science' },
       { name: 'Liam Chen', email: 'liam@student.cems.edu', department: 'Information Technology' },
@@ -365,7 +390,7 @@ const seedData = async () => {
     await Registration.insertMany(registrationsToInsert);
 
     console.log(`\n🎉 Seed completed successfully!`);
-    console.log(`Created: 1 Admin (${admin.email})`);
+    console.log(`Created: 2 Admins (${admin.email}, admin@college.edu)`);
     console.log(`Created: ${organizers.length} Organizers`);
     console.log(`Created: ${students.length} Students`);
     console.log(`Created: ${events.length} Events`);
@@ -373,11 +398,34 @@ const seedData = async () => {
     console.log('Default credentials for all seeded accounts:');
     console.log('Password: password123\n');
 
-    process.exit(0);
+    if (isStandalone) {
+      process.exit(0);
+    }
   } catch (error) {
     console.error('❌ Seeding failed:', error);
-    process.exit(1);
+    if (isStandalone) {
+      process.exit(1);
+    }
+    throw error;
   }
 };
 
-seedData();
+export const autoSeedIfEmpty = async () => {
+  try {
+    const count = await User.countDocuments();
+    if (count === 0) {
+      console.log('🌱 [MongoDB] Empty database detected. Auto-seeding initial CEMS dataset...');
+      await runSeed(false);
+      console.log('✅ [MongoDB] Auto-seeding completed successfully!');
+    }
+  } catch (err) {
+    console.error('⚠️ [MongoDB] Error during autoSeedIfEmpty:', err.message);
+  }
+};
+
+// If run directly from CLI (e.g. node scripts/seed.js)
+if (process.argv[1] && url.fileURLToPath(import.meta.url) === process.argv[1]) {
+  runSeed(true);
+}
+
+export default runSeed;

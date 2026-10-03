@@ -6,7 +6,7 @@ export const getEvents = async (req, res, next) => {
     if (!isConnected()) {
       return res.status(503).json({
         success: false,
-        message: 'Database connection is not configured.',
+        message: 'Database is not connected. Please verify MongoDB connection.',
       });
     }
 
@@ -26,7 +26,7 @@ export const getEvent = async (req, res, next) => {
     if (!isConnected()) {
       return res.status(503).json({
         success: false,
-        message: 'Database connection is not configured.',
+        message: 'Database is not connected. Please verify MongoDB connection.',
       });
     }
 
@@ -46,7 +46,7 @@ export const createEvent = async (req, res, next) => {
     if (!isConnected()) {
       return res.status(503).json({
         success: false,
-        message: 'Database connection is not configured.',
+        message: 'Database is not connected. Please verify MongoDB connection.',
       });
     }
 
@@ -66,7 +66,7 @@ export const updateEvent = async (req, res, next) => {
     if (!isConnected()) {
       return res.status(503).json({
         success: false,
-        message: 'Database connection is not configured.',
+        message: 'Database is not connected. Please verify MongoDB connection.',
       });
     }
 
@@ -86,7 +86,7 @@ export const cancelEvent = async (req, res, next) => {
     if (!isConnected()) {
       return res.status(503).json({
         success: false,
-        message: 'Database connection is not configured.',
+        message: 'Database is not connected. Please verify MongoDB connection.',
       });
     }
 
@@ -106,7 +106,7 @@ export const deleteEvent = async (req, res, next) => {
     if (!isConnected()) {
       return res.status(503).json({
         success: false,
-        message: 'Database connection is not configured.',
+        message: 'Database is not connected. Please verify MongoDB connection.',
       });
     }
 

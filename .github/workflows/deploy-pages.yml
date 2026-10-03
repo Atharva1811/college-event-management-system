@@ -38,7 +38,7 @@ jobs:
         env:
           GITHUB_PAGES: 'true'
           VITE_API_URL: 'https://college-event-management-system-1qmx.onrender.com/api'
-          VITE_USE_MOCK_DATA: 'true'
+          VITE_USE_MOCK_DATA: 'false'
         run: |
           npm run build
           # Ensure direct route navigation and page refresh works on GitHub Pages

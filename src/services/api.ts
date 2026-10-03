@@ -5,8 +5,8 @@ export const isMockMode = () => {
   if (typeof envMock === 'string') {
     return envMock.toLowerCase() === 'true';
   }
-  // Default to mock mode since MongoDB Atlas is not yet configured
-  return true;
+  // Default to normal mode (real backend API & MongoDB Atlas database)
+  return false;
 };
 
 const api = axios.create({
