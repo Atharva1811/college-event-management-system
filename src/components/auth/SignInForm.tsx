@@ -1,0 +1,217 @@
+import React, { useState } from "react";
+import { Link, useNavigate, useLocation } from "react-router";
+import { ChevronLeftIcon, EyeCloseIcon, EyeIcon } from "../../icons";
+import Label from "../form/Label";
+import Input from "../form/input/InputField";
+import Checkbox from "../form/input/Checkbox";
+import Button from "../ui/button/Button";
+import { useAuth } from "../../context/AuthContext";
+import { useToast } from "../../context/ToastContext";
+
+export default function SignInForm() {
+  const [showPassword, setShowPassword] = useState(false);
+  const [isChecked, setIsChecked] = useState(true);
+  const [email, setEmail] = useState("alex@student.cems.edu");
+  const [password, setPassword] = useState("password123");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const { login } = useAuth();
+  const { showToast } = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    try {
+      const user = await login(email, password);
+      showToast(`Welcome back, ${user.name}!`, "success");
+
+      // Check for redirect location
+      const from = (location.state as any)?.from?.pathname;
+      if (from) {
+        navigate(from, { replace: true });
+        return;
+      }
+
+      // Role-based redirection
+      if (user.role === "admin") {
+        navigate("/admin/dashboard", { replace: true });
+      } else if (user.role === "organizer") {
+        navigate("/organizer/dashboard", { replace: true });
+      } else {
+        navigate("/student/dashboard", { replace: true });
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to sign in. Please verify your credentials.");
+      showToast(err.message || "Login failed", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const setDemoAccount = (role: 'student' | 'organizer' | 'admin') => {
+    setError(null);
+    if (role === 'admin') {
+      setEmail("admin@cems.edu");
+      setPassword("password123");
+    } else if (role === 'organizer') {
+      setEmail("vance@cems.edu");
+      setPassword("password123");
+    } else {
+      setEmail("alex@student.cems.edu");
+      setPassword("password123");
+    }
+  };
+
+  return (
+    <div className="flex flex-col flex-1">
+      <div className="w-full max-w-md pt-8 mx-auto">
+        <Link
+          to="/"
+          className="inline-flex items-center text-sm font-medium text-gray-500 transition-colors hover:text-brand-600 dark:text-gray-400 dark:hover:text-brand-400"
+        >
+          <ChevronLeftIcon className="size-5 mr-1" />
+          Back to homepage
+        </Link>
+      </div>
+
+      <div className="flex flex-col justify-center flex-1 w-full max-w-md mx-auto py-8">
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-brand-500 text-white font-black text-sm flex items-center justify-center">
+              C
+            </div>
+            <span className="text-xs font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400">
+              College Event Management System
+            </span>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Sign In to CEMS
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Access your university event dashboard and registrations.
+          </p>
+        </div>
+
+        {/* Demo Fast-Fill Bar */}
+        <div className="mb-6 p-3.5 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
+          <span className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
+            Quick Fill Demo Accounts:
+          </span>
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              onClick={() => setDemoAccount('student')}
+              className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 hover:border-brand-500 hover:text-brand-600 transition-all text-center"
+            >
+              🎓 Student
+            </button>
+            <button
+              type="button"
+              onClick={() => setDemoAccount('organizer')}
+              className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 hover:border-brand-500 hover:text-brand-600 transition-all text-center"
+            >
+              📋 Organizer
+            </button>
+            <button
+              type="button"
+              onClick={() => setDemoAccount('admin')}
+              className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 hover:border-brand-500 hover:text-brand-600 transition-all text-center"
+            >
+              ⚙️ Admin
+            </button>
+          </div>
+        </div>
+
+        {error && (
+          <div className="mb-5 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 text-xs font-semibold flex items-center gap-2">
+            <span>⚠️</span>
+            <span>{error}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div>
+            <Label>
+              University Email <span className="text-error-500">*</span>
+            </Label>
+            <Input
+              type="email"
+              placeholder="e.g. alex@student.cems.edu"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+
+          <div>
+            <Label>
+              Password <span className="text-error-500">*</span>
+            </Label>
+            <div className="relative">
+              <Input
+                type={showPassword ? "text" : "password"}
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                {showPassword ? (
+                  <EyeIcon className="size-5" />
+                ) : (
+                  <EyeCloseIcon className="size-5" />
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={isChecked}
+                onChange={setIsChecked}
+              />
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                Remember me
+              </span>
+            </div>
+            <Link
+              to="/forgot-password"
+              className="text-xs font-semibold text-brand-600 hover:underline dark:text-brand-400"
+            >
+              Forgot password?
+            </Link>
+          </div>
+
+          <div>
+            <Button
+              className="w-full py-3 text-sm font-bold shadow-lg shadow-brand-500/20"
+              disabled={loading}
+            >
+              {loading ? "Authenticating..." : "Sign In"}
+            </Button>
+          </div>
+        </form>
+
+        <p className="mt-8 text-center text-xs text-gray-500 dark:text-gray-400">
+          Don't have a student account yet?{" "}
+          <Link
+            to="/signup"
+            className="font-bold text-brand-600 hover:underline dark:text-brand-400"
+          >
+            Create Account
+          </Link>
+        </p>
+      </div>
+    </div>
+  );
+}
