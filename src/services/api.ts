@@ -34,7 +34,10 @@ api.interceptors.request.use(
 // Response interceptor for centralized error and 401 token expiry handling
 api.interceptors.response.use(
   (response) => response,
-  (error: AxiosError) => {
+  (error: AxiosError<{ success?: boolean; message?: string }>) => {
+    if (error.response?.data?.message) {
+      error.message = error.response.data.message;
+    }
     if (error.response?.status === 401) {
       // Clear token on 401 and redirect to login if not already on auth page
       localStorage.removeItem('cems_token');
