@@ -7,7 +7,7 @@ import morgan from 'morgan';
 // Load environment variables
 dotenv.config();
 
-import connectDB, { isConnected } from './config/db.js';
+import connectDB, { isConnected, getDbStatus } from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import eventRoutes from './routes/eventRoutes.js';
@@ -77,13 +77,19 @@ app.get('/', (req, res) => {
 
 // Production-verified Health check endpoint
 app.get('/api/health', (req, res) => {
+  const dbStatus = getDbStatus();
   res.status(200).json({
     success: true,
     message: 'CEMS API is running',
     data: {
       status: 'healthy',
       system: 'College Event Management System (CEMS) API',
-      database: isConnected() ? 'Connected' : 'Disconnected',
+      database: dbStatus.isConnected ? 'Connected' : 'Disconnected',
+      databaseDetails: {
+        configured: dbStatus.isConfigured,
+        readyState: dbStatus.readyState,
+        error: dbStatus.error,
+      },
       timestamp: new Date().toISOString(),
       environment: process.env.NODE_ENV || 'development',
     },

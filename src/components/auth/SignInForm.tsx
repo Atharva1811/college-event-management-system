@@ -46,8 +46,12 @@ export default function SignInForm() {
         navigate("/student/dashboard", { replace: true });
       }
     } catch (err: any) {
-      setError(err.message || "Failed to sign in. Please verify your credentials.");
-      showToast(err.message || "Login failed", "error");
+      const message =
+        err.response?.data?.message ||
+        err.message ||
+        "Failed to sign in. Please verify your credentials.";
+      setError(message);
+      showToast(message, "error");
     } finally {
       setLoading(false);
     }
