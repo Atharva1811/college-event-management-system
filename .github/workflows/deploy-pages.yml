@@ -37,6 +37,7 @@ jobs:
       - name: Build Vite Application
         env:
           GITHUB_PAGES: 'true'
+          VITE_API_URL: 'https://college-event-management-system-1qmx.onrender.com/api'
           VITE_USE_MOCK_DATA: 'true'
         run: |
           npm run build
