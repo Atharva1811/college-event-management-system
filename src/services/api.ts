@@ -38,15 +38,21 @@ api.interceptors.response.use(
     if (error.response?.data?.message) {
       error.message = error.response.data.message;
     }
-    if (error.response?.status === 401) {
-      // Clear token on 401 and redirect to login if not already on auth page
+    const isAuthEndpoint =
+      error.config?.url?.includes('/auth/login') ||
+      error.config?.url?.includes('/auth/register');
+    if (error.response?.status === 401 && !isAuthEndpoint) {
+      // Clear token on 401 session expiry and redirect to login if not already on auth page
       localStorage.removeItem('cems_token');
       localStorage.removeItem('cems_user');
+      const base = import.meta.env.BASE_URL || '/';
+      const normalizedBase = base.endsWith('/') ? base : `${base}/`;
+      const currentPath = window.location.pathname;
       if (
-        !window.location.pathname.startsWith('/signin') &&
-        !window.location.pathname.startsWith('/login')
+        !currentPath.includes('/signin') &&
+        !currentPath.includes('/login')
       ) {
-        window.location.href = '/signin';
+        window.location.href = `${normalizedBase}signin`;
       }
     }
     return Promise.reject(error);

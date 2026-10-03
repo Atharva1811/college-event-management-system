@@ -14,7 +14,7 @@ export const authService = {
       );
 
       if (!foundUser) {
-        throw new Error('Invalid email or password. (Demo: try admin@cems.edu, vance@cems.edu, or alex@student.cems.edu with any password)');
+        throw new Error('Invalid email or password. Please verify your credentials.');
       }
 
       if (!foundUser.isActive) {

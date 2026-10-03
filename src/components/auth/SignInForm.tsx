@@ -11,8 +11,8 @@ import { useToast } from "../../context/ToastContext";
 export default function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isChecked, setIsChecked] = useState(true);
-  const [email, setEmail] = useState("alex@student.cems.edu");
-  const [password, setPassword] = useState("password123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -57,20 +57,6 @@ export default function SignInForm() {
     }
   };
 
-  const setDemoAccount = (role: 'student' | 'organizer' | 'admin') => {
-    setError(null);
-    if (role === 'admin') {
-      setEmail("admin@cems.edu");
-      setPassword("password123");
-    } else if (role === 'organizer') {
-      setEmail("vance@cems.edu");
-      setPassword("password123");
-    } else {
-      setEmail("alex@student.cems.edu");
-      setPassword("password123");
-    }
-  };
-
   return (
     <div className="flex flex-col flex-1">
       <div className="w-full max-w-md pt-8 mx-auto">
@@ -101,36 +87,6 @@ export default function SignInForm() {
           </p>
         </div>
 
-        {/* Demo Fast-Fill Bar */}
-        <div className="mb-6 p-3.5 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
-          <span className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
-            Quick Fill Demo Accounts:
-          </span>
-          <div className="grid grid-cols-3 gap-2">
-            <button
-              type="button"
-              onClick={() => setDemoAccount('student')}
-              className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 hover:border-brand-500 hover:text-brand-600 transition-all text-center"
-            >
-              🎓 Student
-            </button>
-            <button
-              type="button"
-              onClick={() => setDemoAccount('organizer')}
-              className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 hover:border-brand-500 hover:text-brand-600 transition-all text-center"
-            >
-              📋 Organizer
-            </button>
-            <button
-              type="button"
-              onClick={() => setDemoAccount('admin')}
-              className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 hover:border-brand-500 hover:text-brand-600 transition-all text-center"
-            >
-              ⚙️ Admin
-            </button>
-          </div>
-        </div>
-
         {error && (
           <div className="mb-5 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 text-xs font-semibold flex items-center gap-2">
             <span>⚠️</span>
@@ -145,7 +101,7 @@ export default function SignInForm() {
             </Label>
             <Input
               type="email"
-              placeholder="e.g. alex@student.cems.edu"
+              placeholder="Enter your university email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required

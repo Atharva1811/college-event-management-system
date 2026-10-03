@@ -2,7 +2,7 @@ import { Link } from 'react-router';
 import { useAuth } from '../../context/AuthContext';
 
 export default function Unauthorized() {
-  const { role, switchDemoRole } = useAuth();
+  const { role } = useAuth();
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[70vh] p-6 text-center">
@@ -26,15 +26,12 @@ export default function Unauthorized() {
         >
           Return Home
         </Link>
-        <button
-          onClick={async () => {
-            await switchDemoRole('admin');
-            window.location.href = '/admin/dashboard';
-          }}
+        <Link
+          to="/signin"
           className="px-5 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold shadow-md shadow-brand-500/20 transition-all cursor-pointer"
         >
-          Demo Switch to Admin Role
-        </button>
+          Sign In with Authorized Account
+        </Link>
       </div>
     </div>
   );
