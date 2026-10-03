@@ -198,6 +198,48 @@ The system demonstrates **9 distinct MongoDB Aggregation Pipelines**:
 
 ---
 
+## 🚀 Cloud Deployment Guide
+
+### A. Frontend: GitHub Pages (Automated via GitHub Actions)
+1. Go to your GitHub repository:  
+   **[https://github.com/Atharva1811/college-event-management-system/settings/pages](https://github.com/Atharva1811/college-event-management-system/settings/pages)**
+2. Under **Build and deployment** > **Source**, select:  
+   **GitHub Actions** (instead of "Deploy from a branch").
+3. The `.github/workflows/deploy-pages.yml` workflow will automatically build and publish the frontend at:  
+   **`https://atharva1811.github.io/college-event-management-system/`**
+
+### B. Backend: Render Web Service
+1. Sign in to **[https://dashboard.render.com](https://dashboard.render.com)**.
+2. Click **New +** > **Web Service** and select `Atharva1811/college-event-management-system`.
+3. Configure the following parameters (or choose **Blueprints** to use [`render.yaml`](./render.yaml) automatically):
+   - **Root Directory**: `backend`
+   - **Environment**: `Node`
+   - **Build Command**: `npm install`
+   - **Start Command**: `npm start`
+   - **Plan**: `Free`
+4. Configure Environment Variables securely in Render:
+   - `NODE_ENV`: `production`
+   - `PORT`: `10000`
+   - `CLIENT_URL`: `https://atharva1811.github.io/college-event-management-system`
+   - `JWT_SECRET`: `<your_secure_secret>`
+   - `MONGO_URI`: `mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/college_event_management?retryWrites=true&w=majority`
+5. Once deployed, verify your health check endpoint at:  
+   `https://<your-render-subdomain>.onrender.com/api/health`
+
+---
+
+## 📸 Application Screenshots (Viva & Presentation Showcase)
+
+| Showcase Screen | Interface Capability |
+| :--- | :--- |
+| **Public Discovery Portal** | Modern responsive landing page featuring categorized campus event listings |
+| **System Admin Analytics** | Institutional telemetry, monthly registration velocity, and department turnout yield |
+| **ADBMS Aggregation Explorer** | Stage-by-stage pipeline debugger demonstrating `$match`, `$lookup`, `$unwind`, `$group`, `$facet` |
+| **Faculty Coordinator Console** | Publishing workflow, seating quota monitor, and live attendance toggling |
+| **Student Self-Service Portal** | 1-click registration/cancellation, digital QR entry ticket, and star rating submissions |
+
+---
+
 ## 📜 Available NPM Scripts
 
 ### Frontend (Project Root)
