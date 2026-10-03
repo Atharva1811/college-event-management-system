@@ -23,12 +23,14 @@ const app = express();
 connectDB();
 
 // Security and utility middlewares
-app.use(helmet());
+app.use(helmet({ crossOriginResourcePolicy: false }));
+
 // Production-safe CORS configuration
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
   'http://localhost:4173',
+  'https://atharva1811.github.io',
   process.env.CLIENT_URL,
 ].filter(Boolean);
 
@@ -37,12 +39,23 @@ app.use(
     origin: (origin, callback) => {
       // Allow requests with no origin (mobile apps, curl, server-to-server health checks)
       if (!origin) return callback(null, true);
-      if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+
+      const isAllowed =
+        allowedOrigins.indexOf(origin) !== -1 ||
+        origin.endsWith('.github.io') ||
+        origin.includes('localhost') ||
+        origin.includes('127.0.0.1') ||
+        origin.endsWith('.onrender.com') ||
+        process.env.NODE_ENV !== 'production';
+
+      if (isAllowed) {
         return callback(null, true);
       }
       return callback(new Error('Blocked by CORS policy: Origin not allowed'));
     },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   })
 );
 app.use(express.json());
