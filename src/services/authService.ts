@@ -60,7 +60,7 @@ export const authService = {
         email: normalizedEmail,
         role: userData.role || 'student', // Force student for public registration
         phone: userData.phone || '',
-        department: (userData.department as any) || 'Computer Science',
+        department: (userData.department as User['department']) || 'Computer Science',
         avatar: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150`,
         isActive: true,
         createdAt: new Date().toISOString(),

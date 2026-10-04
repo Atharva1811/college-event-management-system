@@ -1,5 +1,5 @@
 import api, { isMockMode } from './api';
-import { AdminAnalyticsSummary, DatabaseInsightsData } from '../types';
+import { AdminAnalyticsSummary, DatabaseInsightsData, OrganizerAnalyticsSummary } from '../types';
 import { mockAdminAnalytics, mockDatabaseInsights } from '../data/mock/mockAnalytics';
 
 export const analyticsService = {
@@ -13,7 +13,7 @@ export const analyticsService = {
     return response.data.data;
   },
 
-  async getOrganizerAnalytics(): Promise<any> {
+  async getOrganizerAnalytics(): Promise<OrganizerAnalyticsSummary> {
     if (isMockMode()) {
       await new Promise((r) => setTimeout(r, 200));
       return {

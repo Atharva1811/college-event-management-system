@@ -68,10 +68,11 @@ export default function SignUpForm() {
 
       showToast(`Account created! Welcome, ${user.name}!`, "success");
       navigate("/student/dashboard", { replace: true });
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
       const message =
-        err.response?.data?.message ||
-        err.message ||
+        errorObj.response?.data?.message ||
+        errorObj.message ||
         "Registration failed.";
       setError(message);
       showToast(message, "error");

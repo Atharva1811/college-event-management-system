@@ -31,7 +31,7 @@ export default function SignInForm() {
       showToast(`Welcome back, ${user.name}!`, "success");
 
       // Check for redirect location
-      const from = (location.state as any)?.from?.pathname;
+      const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
       if (from) {
         navigate(from, { replace: true });
         return;
@@ -45,10 +45,11 @@ export default function SignInForm() {
       } else {
         navigate("/student/dashboard", { replace: true });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
       const message =
-        err.response?.data?.message ||
-        err.message ||
+        errorObj.response?.data?.message ||
+        errorObj.message ||
         "Failed to sign in. Please verify your credentials.";
       setError(message);
       showToast(message, "error");

@@ -13,7 +13,7 @@ const api = axios.create({
   baseURL:
     import.meta.env.VITE_API_URL ||
     'https://college-event-management-system-1qmx.onrender.com/api',
-  timeout: 10000,
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router";
 import {
   BoxCubeIcon,
@@ -48,7 +48,7 @@ export const AppSidebar: React.FC = () => {
   );
 
   // Role-specific main navigation items
-  const getNavItems = (): NavItem[] => {
+  const getNavItems = useCallback((): NavItem[] => {
     if (role === "admin") {
       return [
         {
@@ -163,22 +163,25 @@ export const AppSidebar: React.FC = () => {
         path: "/student/feedback",
       },
     ];
-  };
+  }, [role]);
 
-  const navItems = getNavItems();
+  const navItems = useMemo(() => getNavItems(), [getNavItems]);
 
-  const othersItems: NavItem[] = [
-    {
-      name: "My Profile",
-      icon: <UserCircleIcon />,
-      path: "/profile",
-    },
-    {
-      name: "Settings",
-      icon: <BoxCubeIcon />,
-      path: "/settings",
-    },
-  ];
+  const othersItems: NavItem[] = useMemo(
+    () => [
+      {
+        name: "My Profile",
+        icon: <UserCircleIcon />,
+        path: "/profile",
+      },
+      {
+        name: "Settings",
+        icon: <BoxCubeIcon />,
+        path: "/settings",
+      },
+    ],
+    []
+  );
 
   useEffect(() => {
     let submenuMatched = false;
@@ -202,7 +205,7 @@ export const AppSidebar: React.FC = () => {
     if (!submenuMatched) {
       setOpenSubmenu(null);
     }
-  }, [location, isActive]);
+  }, [location, isActive, navItems, othersItems]);
 
   useEffect(() => {
     if (openSubmenu !== null) {

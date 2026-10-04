@@ -42,6 +42,22 @@ export default function StudentDashboard() {
       !r.rating
   ).length;
 
+  const months = ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'];
+  const monthlyCounts: Record<string, number> = { May: 0, Jun: 0, Jul: 0, Aug: 0, Sep: 0, Oct: 0 };
+  myRegistrations.forEach((r) => {
+    if (r.registeredAt && r.status === 'registered') {
+      const d = new Date(r.registeredAt);
+      const m = d.toLocaleString('en-US', { month: 'short' });
+      if (monthlyCounts[m] !== undefined) {
+        monthlyCounts[m] += 1;
+      }
+    }
+  });
+
+  const studentChartData = myRegistrations.length > 0
+    ? months.map((m) => monthlyCounts[m])
+    : [1, 2, 1, 3, 4, 2];
+
   const chartOptions: ApexOptions = {
     colors: ['#465FFF'],
     chart: {
@@ -57,7 +73,7 @@ export default function StudentDashboard() {
     },
     dataLabels: { enabled: false },
     xaxis: {
-      categories: ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'],
+      categories: months,
       axisBorder: { show: false },
       axisTicks: { show: false },
     },
@@ -70,7 +86,7 @@ export default function StudentDashboard() {
   const chartSeries = [
     {
       name: 'Registrations',
-      data: [1, 2, 1, 3, 4, activeRegistrations.length || 2],
+      data: studentChartData,
     },
   ];
 

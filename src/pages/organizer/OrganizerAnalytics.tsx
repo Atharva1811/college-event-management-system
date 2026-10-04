@@ -3,10 +3,10 @@ import Chart from 'react-apexcharts';
 import { ApexOptions } from 'apexcharts';
 import { analyticsService } from '../../services/analyticsService';
 import { eventService } from '../../services/eventService';
-import { Event } from '../../types';
+import { Event, OrganizerAnalyticsSummary } from '../../types';
 
 export default function OrganizerAnalytics() {
-  const [analytics, setAnalytics] = useState<any>(null);
+  const [analytics, setAnalytics] = useState<OrganizerAnalyticsSummary | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
 
   useEffect(() => {
@@ -48,7 +48,10 @@ export default function OrganizerAnalytics() {
     },
   };
 
-  const attendanceSeries = [72, 7, 105];
+  const presentCount = analytics?.attendance?.find((a) => a._id === 'present')?.count ?? 72;
+  const absentCount = analytics?.attendance?.find((a) => a._id === 'absent')?.count ?? 7;
+  const pendingCount = analytics?.attendance?.find((a) => a._id === 'pending')?.count ?? 105;
+  const attendanceSeries = [presentCount, absentCount, pendingCount];
 
   const trendChartOptions: ApexOptions = {
     chart: {

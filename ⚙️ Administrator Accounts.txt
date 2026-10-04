@@ -1,0 +1,19 @@
+⚙️ Administrator Accounts
+Role	University Email (Login ID)	Password	Account Holder
+Admin	admin@cems.edu	password123	Dr. Sarah Jenkins
+Admin	admin@college.edu	password123	CEMS Administrator
+📋 Faculty / Organizer Accounts
+Role	University Email (Login ID)	Password	Account Holder	Department
+Organizer	organizer@college.edu	password123	Event Organizer	Computer Science
+Organizer	vance@cems.edu	password123	Prof. Marcus Vance	Computer Science
+Organizer	rostova@cems.edu	password123	Dr. Elena Rostova	AI & Data Science
+Organizer	miller@cems.edu	password123	Coach David Miller	Electronics
+🎓 Student Accounts
+Role	University Email (Login ID)	Password	Account Holder	Department
+Student	student@college.edu	password123	Campus Student	Computer Science
+Student	alex@student.cems.edu	password123	Alex Johnson	Computer Science
+Student	priya@student.cems.edu	password123	Priya Sharma	AI & Data Science
+Student	liam@student.cems.edu	password123	Liam Chen	Information Technology
+Student	sofia@student.cems.edu	password123	Sofia Rodriguez	Electronics
+Student	ethan@student.cems.edu	password123	Ethan Patel	Mechanical
+Student	chloe@student.cems.edu	password123	Chloe Dubois	Computer Science

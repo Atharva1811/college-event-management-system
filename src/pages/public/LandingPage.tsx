@@ -36,12 +36,6 @@ export const LandingPage: React.FC = () => {
     { name: 'Competition', icon: '⚡', count: '9+ Events', desc: 'Venture pitch showcase, chess grandmasters & robotics arena' },
   ];
 
-  const stats = [
-    { label: 'Active Students', value: '4,500+' },
-    { label: 'Events Hosted', value: '180+' },
-    { label: 'Campus Clubs', value: '35+' },
-    { label: 'Attendance Rate', value: '94%' },
-  ];
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors">
@@ -137,20 +131,6 @@ export const LandingPage: React.FC = () => {
                 Student / Faculty Login
               </Link>
             </div>
-          </div>
-
-          {/* Quick Stats Bar */}
-          <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-4 p-6 rounded-2xl bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-800 shadow-sm">
-            {stats.map((s) => (
-              <div key={s.label} className="text-center p-2">
-                <div className="text-3xl font-extrabold text-brand-600 dark:text-brand-400">
-                  {s.value}
-                </div>
-                <div className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mt-1">
-                  {s.label}
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       </section>

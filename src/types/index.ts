@@ -127,3 +127,21 @@ export interface DatabaseInsightsData {
     ratingDistribution: Array<{ rating: number; count: number }>;
   };
 }
+
+export interface OrganizerAnalyticsSummary {
+  metrics: {
+    totalEvents: number;
+    upcomingEvents: number;
+    totalParticipants: number;
+    averageRating: number;
+    attendanceRate: number;
+  };
+  events: Array<{
+    title: string;
+    registrations?: number;
+    registeredCount?: number;
+    capacity: number;
+    status: string;
+  }>;
+  attendance: Array<{ _id: string; count: number }>;
+}

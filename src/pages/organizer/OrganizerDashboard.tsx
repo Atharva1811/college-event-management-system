@@ -5,12 +5,12 @@ import { ApexOptions } from 'apexcharts';
 import { eventService } from '../../services/eventService';
 import { analyticsService } from '../../services/analyticsService';
 import { useAuth } from '../../context/AuthContext';
-import { Event } from '../../types';
+import { Event, OrganizerAnalyticsSummary } from '../../types';
 
 export default function OrganizerDashboard() {
   const { currentUser } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
-  const [analytics, setAnalytics] = useState<any>(null);
+  const [analytics, setAnalytics] = useState<OrganizerAnalyticsSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -38,6 +38,16 @@ export default function OrganizerDashboard() {
     averageRating: 4.8,
   };
 
+  const chartCategories =
+    events.length > 0
+      ? events.map((e) => (e.title.length > 14 ? `${e.title.substring(0, 14)}...` : e.title))
+      : ['Hackathon', 'AI Workshop', 'CyberSec', 'Cricket', 'Cultural', 'Robotics'];
+
+  const chartData =
+    events.length > 0
+      ? events.map((e) => e.registeredCount || 0)
+      : [84, 42, 135, 150, 220, 38];
+
   const chartOptions: ApexOptions = {
     colors: ['#465FFF'],
     chart: {
@@ -53,7 +63,7 @@ export default function OrganizerDashboard() {
     },
     dataLabels: { enabled: false },
     xaxis: {
-      categories: ['Hackathon', 'AI Workshop', 'CyberSec', 'Cricket', 'Cultural', 'Robotics'],
+      categories: chartCategories,
       axisBorder: { show: false },
       axisTicks: { show: false },
     },
@@ -62,7 +72,7 @@ export default function OrganizerDashboard() {
   const chartSeries = [
     {
       name: 'Registrations',
-      data: [84, 42, 135, 150, 220, 38],
+      data: chartData,
     },
   ];
 
