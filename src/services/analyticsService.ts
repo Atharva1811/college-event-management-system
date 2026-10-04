@@ -18,22 +18,15 @@ export const analyticsService = {
       await new Promise((r) => setTimeout(r, 200));
       return {
         metrics: {
-          totalEvents: 6,
-          upcomingEvents: 4,
-          totalParticipants: 184,
-          averageRating: 4.8,
-          attendanceRate: 91.2,
+          totalEvents: 0,
+          upcomingEvents: 0,
+          totalParticipants: 0,
+          averageRating: 0,
+          attendanceRate: 0,
         },
-        events: [
-          { title: 'National Hackathon 2026', registrations: 84, capacity: 100, status: 'upcoming' },
-          { title: 'AI Hands-On Workshop', registrations: 42, capacity: 45, status: 'upcoming' },
-          { title: 'Full-Stack Bootcamp', registrations: 50, capacity: 50, status: 'completed' },
-        ],
-        attendance: [
-          { _id: 'present', count: 72 },
-          { _id: 'absent', count: 7 },
-          { _id: 'pending', count: 126 },
-        ],
+        events: [],
+        attendance: [],
+        monthlyTrends: [],
       };
     }
 
@@ -50,10 +43,10 @@ export const analyticsService = {
     if (isMockMode()) {
       await new Promise((r) => setTimeout(r, 200));
       return {
-        totalRegistrations: 4,
-        attendedCount: 2,
-        feedbackGivenCount: 2,
-        upcomingEvents: 2,
+        totalRegistrations: 0,
+        attendedCount: 0,
+        feedbackGivenCount: 0,
+        upcomingEvents: 0,
       };
     }
 

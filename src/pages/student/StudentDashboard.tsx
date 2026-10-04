@@ -54,9 +54,7 @@ export default function StudentDashboard() {
     }
   });
 
-  const studentChartData = myRegistrations.length > 0
-    ? months.map((m) => monthlyCounts[m])
-    : [1, 2, 1, 3, 4, 2];
+  const studentChartData = months.map((m) => monthlyCounts[m]);
 
   const chartOptions: ApexOptions = {
     colors: ['#465FFF'],

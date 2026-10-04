@@ -2,9 +2,11 @@ import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router';
 import { eventService } from '../../services/eventService';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
 import { Event } from '../../types';
 
 export default function OrganizerEvents() {
+  const { currentUser } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
@@ -13,14 +15,18 @@ export default function OrganizerEvents() {
   const loadEvents = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await eventService.getEvents({ limit: 50 });
+      const params: any = { limit: 50 };
+      if (currentUser?.role === 'organizer') {
+        params.organizer = currentUser._id;
+      }
+      const data = await eventService.getEvents(params);
       setEvents(data.events);
     } catch (err: any) {
       showToast(err.message || 'Failed to fetch events', 'error');
     } finally {
       setLoading(false);
     }
-  }, [showToast]);
+  }, [currentUser, showToast]);
 
   useEffect(() => {
     loadEvents();

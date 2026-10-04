@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { registrationService } from '../../services/registrationService';
+import { useAuth } from '../../context/AuthContext';
 import { Registration } from '../../types';
 
 export default function OrganizerFeedback() {
+  const { currentUser } = useAuth();
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -10,8 +12,16 @@ export default function OrganizerFeedback() {
     const fetchReviews = async () => {
       try {
         const data = await registrationService.getAllRegistrations();
-        // Filter those with ratings
-        const reviewed = data.filter((r) => r.rating !== null && r.rating !== undefined);
+        // Filter those with ratings and scoped to current organizer if role is organizer
+        const reviewed = data.filter((r) => {
+          if (r.rating === null || r.rating === undefined) return false;
+          if (currentUser?.role === 'organizer') {
+            const ev = typeof r.event === 'object' ? r.event : null;
+            const orgId = typeof ev?.organizer === 'object' ? ev?.organizer?._id : ev?.organizer;
+            return orgId === currentUser._id;
+          }
+          return true;
+        });
         setRegistrations(reviewed);
       } catch (err) {
         console.error('Failed to load feedback:', err);
@@ -20,7 +30,7 @@ export default function OrganizerFeedback() {
       }
     };
     fetchReviews();
-  }, []);
+  }, [currentUser]);
 
   const totalReviews = registrations.length;
   const avgRating =
@@ -29,7 +39,7 @@ export default function OrganizerFeedback() {
           registrations.reduce((acc, r) => acc + (r.rating || 0), 0) /
           totalReviews
         ).toFixed(1)
-      : '4.8';
+      : '0.0';
 
   const distribution = [5, 4, 3, 2, 1].map((score) => {
     const count = registrations.filter((r) => r.rating === score).length;

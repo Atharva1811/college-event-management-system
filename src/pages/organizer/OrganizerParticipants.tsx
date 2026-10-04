@@ -3,9 +3,11 @@ import { useSearchParams } from 'react-router';
 import { eventService } from '../../services/eventService';
 import { registrationService } from '../../services/registrationService';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
 import { Event, Registration, AttendanceStatus } from '../../types';
 
 export default function OrganizerParticipants() {
+  const { currentUser } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const currentEventParam = searchParams.get('event');
 
@@ -23,7 +25,11 @@ export default function OrganizerParticipants() {
   useEffect(() => {
     const loadEvents = async () => {
       try {
-        const data = await eventService.getEvents({ limit: 50 });
+        const params: any = { limit: 50 };
+        if (currentUser?.role === 'organizer') {
+          params.organizer = currentUser._id;
+        }
+        const data = await eventService.getEvents(params);
         setEvents(data.events);
         if (data.events.length > 0) {
           const initialId = currentEventParam || data.events[0]._id;
@@ -34,7 +40,7 @@ export default function OrganizerParticipants() {
       }
     };
     loadEvents();
-  }, [currentEventParam]);
+  }, [currentEventParam, currentUser]);
 
   // Load participants for selected event
   const loadParticipants = useCallback(async () => {

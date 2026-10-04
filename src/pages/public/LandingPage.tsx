@@ -9,11 +9,18 @@ export const LandingPage: React.FC = () => {
   const { isAuthenticated, role } = useAuth();
   const navigate = useNavigate();
 
+  const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
+
   useEffect(() => {
     const loadEvents = async () => {
       try {
-        const { events } = await eventService.getEvents({ limit: 6, status: 'upcoming' });
-        setFeaturedEvents(events);
+        const { events } = await eventService.getEvents({ limit: 100 });
+        const counts: Record<string, number> = {};
+        events.forEach((ev) => {
+          counts[ev.category] = (counts[ev.category] || 0) + 1;
+        });
+        setCategoryCounts(counts);
+        setFeaturedEvents(events.filter((e) => e.status === 'upcoming').slice(0, 6));
       } catch (err) {
         console.error('Failed to load featured events:', err);
       }
@@ -28,12 +35,12 @@ export const LandingPage: React.FC = () => {
   };
 
   const categories = [
-    { name: 'Technical', icon: '💻', count: '12+ Events', desc: 'Hackathons, coding challenges, AI colloquiums & robotics' },
-    { name: 'Cultural', icon: '🎭', count: '8+ Events', desc: 'Music bands, theater dramas, fine arts & photography' },
-    { name: 'Sports', icon: '🏆', count: '6+ Events', desc: 'Cricket leagues, badminton tournaments & varsity athletic meets' },
-    { name: 'Workshop', icon: '🛠️', count: '10+ Events', desc: 'Full-stack bootcamp, cloud computing & design thinking' },
-    { name: 'Seminar', icon: '🎙️', count: '14+ Events', desc: 'Keynotes from academic pioneers, CXOs & ethical hackers' },
-    { name: 'Competition', icon: '⚡', count: '9+ Events', desc: 'Venture pitch showcase, chess grandmasters & robotics arena' },
+    { name: 'Technical', icon: '💻', desc: 'Hackathons, coding challenges, AI colloquiums & robotics' },
+    { name: 'Cultural', icon: '🎭', desc: 'Music bands, theater dramas, fine arts & photography' },
+    { name: 'Sports', icon: '🏆', desc: 'Cricket leagues, badminton tournaments & varsity athletic meets' },
+    { name: 'Workshop', icon: '🛠️', desc: 'Full-stack bootcamp, cloud computing & design thinking' },
+    { name: 'Seminar', icon: '🎙️', desc: 'Keynotes from academic pioneers, CXOs & ethical hackers' },
+    { name: 'Competition', icon: '⚡', desc: 'Venture pitch showcase, chess grandmasters & robotics arena' },
   ];
 
 
@@ -242,7 +249,7 @@ export const LandingPage: React.FC = () => {
                     {c.name}
                   </h3>
                   <span className="text-xs font-semibold px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
-                    {c.count}
+                    {categoryCounts[c.name] ? `${categoryCounts[c.name]} Events` : 'Explore'}
                   </span>
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">

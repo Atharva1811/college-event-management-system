@@ -144,4 +144,5 @@ export interface OrganizerAnalyticsSummary {
     status: string;
   }>;
   attendance: Array<{ _id: string; count: number }>;
+  monthlyTrends?: Array<{ period: string; count: number }>;
 }

@@ -28,7 +28,7 @@ export default function StudentAttendance() {
   const rate =
     presentCount + absentCount > 0
       ? ((presentCount / (presentCount + absentCount)) * 100).toFixed(1)
-      : '100.0';
+      : '0.0';
 
   return (
     <div className="space-y-6">

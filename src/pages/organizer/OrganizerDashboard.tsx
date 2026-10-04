@@ -16,8 +16,12 @@ export default function OrganizerDashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        const params: any = { limit: 6 };
+        if (currentUser?.role === 'organizer') {
+          params.organizer = currentUser._id;
+        }
         const [eventsData, stats] = await Promise.all([
-          eventService.getEvents({ limit: 6 }),
+          eventService.getEvents(params),
           analyticsService.getOrganizerAnalytics(),
         ]);
         setEvents(eventsData.events);
@@ -29,24 +33,20 @@ export default function OrganizerDashboard() {
       }
     };
     fetchData();
-  }, []);
+  }, [currentUser]);
 
   const metrics = analytics?.metrics || {
-    totalEvents: 6,
-    upcomingEvents: 4,
-    totalParticipants: 184,
-    averageRating: 4.8,
+    totalEvents: 0,
+    upcomingEvents: 0,
+    totalParticipants: 0,
+    averageRating: 0,
   };
 
-  const chartCategories =
-    events.length > 0
-      ? events.map((e) => (e.title.length > 14 ? `${e.title.substring(0, 14)}...` : e.title))
-      : ['Hackathon', 'AI Workshop', 'CyberSec', 'Cricket', 'Cultural', 'Robotics'];
+  const chartCategories = events.map((e) =>
+    e.title.length > 14 ? `${e.title.substring(0, 14)}...` : e.title
+  );
 
-  const chartData =
-    events.length > 0
-      ? events.map((e) => e.registeredCount || 0)
-      : [84, 42, 135, 150, 220, 38];
+  const chartData = events.map((e) => e.registeredCount || 0);
 
   const chartOptions: ApexOptions = {
     colors: ['#465FFF'],

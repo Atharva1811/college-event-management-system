@@ -3,18 +3,24 @@ import Chart from 'react-apexcharts';
 import { ApexOptions } from 'apexcharts';
 import { analyticsService } from '../../services/analyticsService';
 import { eventService } from '../../services/eventService';
+import { useAuth } from '../../context/AuthContext';
 import { Event, OrganizerAnalyticsSummary } from '../../types';
 
 export default function OrganizerAnalytics() {
+  const { currentUser } = useAuth();
   const [analytics, setAnalytics] = useState<OrganizerAnalyticsSummary | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
+        const params: any = { limit: 10 };
+        if (currentUser?.role === 'organizer') {
+          params.organizer = currentUser._id;
+        }
         const [stats, eventsData] = await Promise.all([
           analyticsService.getOrganizerAnalytics(),
-          eventService.getEvents({ limit: 10 }),
+          eventService.getEvents(params),
         ]);
         setAnalytics(stats);
         setEvents(eventsData.events);
@@ -23,14 +29,14 @@ export default function OrganizerAnalytics() {
       }
     };
     fetchData();
-  }, []);
+  }, [currentUser]);
 
   const metrics = analytics?.metrics || {
-    totalEvents: 6,
-    upcomingEvents: 4,
-    totalParticipants: 184,
-    averageRating: 4.8,
-    attendanceRate: 91.2,
+    totalEvents: 0,
+    upcomingEvents: 0,
+    totalParticipants: 0,
+    averageRating: 0,
+    attendanceRate: 0,
   };
 
   const attendanceChartOptions: ApexOptions = {
@@ -48,10 +54,13 @@ export default function OrganizerAnalytics() {
     },
   };
 
-  const presentCount = analytics?.attendance?.find((a) => a._id === 'present')?.count ?? 72;
-  const absentCount = analytics?.attendance?.find((a) => a._id === 'absent')?.count ?? 7;
-  const pendingCount = analytics?.attendance?.find((a) => a._id === 'pending')?.count ?? 105;
+  const presentCount = analytics?.attendance?.find((a) => a._id === 'present')?.count ?? 0;
+  const absentCount = analytics?.attendance?.find((a) => a._id === 'absent')?.count ?? 0;
+  const pendingCount = analytics?.attendance?.find((a) => a._id === 'pending')?.count ?? 0;
   const attendanceSeries = [presentCount, absentCount, pendingCount];
+
+  const trendCategories = analytics?.monthlyTrends?.map((t) => t.period) || [];
+  const trendData = analytics?.monthlyTrends?.map((t) => t.count) || [];
 
   const trendChartOptions: ApexOptions = {
     chart: {
@@ -69,14 +78,14 @@ export default function OrganizerAnalytics() {
       },
     },
     xaxis: {
-      categories: ['May 2026', 'Jun 2026', 'Jul 2026', 'Aug 2026', 'Sep 2026', 'Oct 2026'],
+      categories: trendCategories,
     },
   };
 
   const trendSeries = [
     {
       name: 'Registrations',
-      data: [15, 22, 30, 48, 62, 84],
+      data: trendData,
     },
   ];
 

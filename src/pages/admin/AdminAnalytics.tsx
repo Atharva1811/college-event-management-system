@@ -23,14 +23,14 @@ export default function AdminAnalytics() {
   }, []);
 
   const metrics = analytics?.metrics || {
-    totalStudents: 15,
-    totalOrganizers: 3,
-    totalEvents: 16,
-    totalRegistrations: 148,
-    upcomingEvents: 11,
-    completedEvents: 5,
-    attendanceRate: 88.4,
-    averageRating: 4.8,
+    totalStudents: 0,
+    totalOrganizers: 0,
+    totalEvents: 0,
+    totalRegistrations: 0,
+    upcomingEvents: 0,
+    completedEvents: 0,
+    attendanceRate: 0,
+    averageRating: 0,
   };
 
   // 1. Monthly Registration Trend Chart
@@ -53,9 +53,7 @@ export default function AdminAnalytics() {
     dataLabels: { enabled: false },
     stroke: { curve: 'smooth', width: 2 },
     xaxis: {
-      categories: analytics?.monthlyTrends.map((m) => m.period) || [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-      ],
+      categories: analytics?.monthlyTrends?.map((m) => m.period) || [],
       axisBorder: { show: false },
       axisTicks: { show: false },
     },
@@ -65,7 +63,7 @@ export default function AdminAnalytics() {
   const monthlySeries = [
     {
       name: 'Registrations',
-      data: analytics?.monthlyTrends.map((m) => m.count) || [12, 19, 28, 35, 42, 38, 25, 40, 52, 60, 48, 55],
+      data: analytics?.monthlyTrends?.map((m) => m.count) || [],
     },
   ];
 
@@ -86,30 +84,26 @@ export default function AdminAnalytics() {
     },
     dataLabels: { enabled: false },
     xaxis: {
-      categories: analytics?.departments.map((d) => d.department) || [
-        'Computer Science', 'Information Technology', 'AI & Data Science', 'Electronics', 'Mechanical', 'Civil', 'MBA'
-      ],
+      categories: analytics?.departments?.map((d) => d.department) || [],
     },
   };
 
   const deptSeries = [
     {
       name: 'Registrations',
-      data: analytics?.departments.map((d) => d.totalRegistrations) || [52, 38, 24, 18, 10, 4, 2],
+      data: analytics?.departments?.map((d) => d.totalRegistrations) || [],
     },
   ];
 
   // 3. Category Donut Chart
   const categoryChartOptions: ApexOptions = {
     chart: { type: 'donut', fontFamily: 'Outfit, sans-serif' },
-    labels: analytics?.categories.map((c) => c.category) || [
-      'Competition', 'Seminar', 'Sports', 'Cultural', 'Workshop', 'Technical'
-    ],
+    labels: analytics?.categories?.map((c) => c.category) || [],
     colors: ['#465FFF', '#9333EA', '#F59E0B', '#EC4899', '#10B981', '#06B6D4'],
     legend: { position: 'bottom' },
   };
 
-  const categorySeries = analytics?.categories.map((c) => c.count) || [4, 4, 3, 3, 2, 2];
+  const categorySeries = analytics?.categories?.map((c) => c.count) || [];
 
   if (loading && !analytics) {
     return (

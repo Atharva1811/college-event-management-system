@@ -369,7 +369,7 @@ export const getAdminDashboardSummary = async () => {
       : 0;
 
   const averageRating =
-    ratingFacet.length > 0 ? Number(ratingFacet[0].avg.toFixed(1)) : 4.8;
+    ratingFacet.length > 0 ? Number(ratingFacet[0].avg.toFixed(1)) : 0;
 
   return {
     metrics: {
@@ -397,7 +397,7 @@ export const getOrganizerDashboardSummary = async (organizerId) => {
   const events = await Event.find({ organizer: organizerId });
   const eventIds = events.map((e) => e._id);
 
-  const [totalParticipants, attendanceFacet, ratingsFacet] = await Promise.all([
+  const [totalParticipants, attendanceFacet, ratingsFacet, monthlyTrends] = await Promise.all([
     Registration.countDocuments({
       event: { $in: eventIds },
       status: 'registered',
@@ -431,6 +431,45 @@ export const getOrganizerDashboardSummary = async (organizerId) => {
         },
       },
     ]),
+    Registration.aggregate([
+      {
+        $match: {
+          event: { $in: eventIds },
+          status: 'registered',
+        },
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$registeredAt' },
+            month: { $month: '$registeredAt' },
+          },
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $sort: { '_id.year': 1, '_id.month': 1 },
+      },
+      {
+        $project: {
+          _id: 0,
+          period: {
+            $concat: [
+              { $toString: '$_id.year' },
+              '-',
+              {
+                $cond: [
+                  { $lt: ['$_id.month', 10] },
+                  { $concat: ['0', { $toString: '$_id.month' }] },
+                  { $toString: '$_id.month' },
+                ],
+              },
+            ],
+          },
+          count: 1,
+        },
+      },
+    ]),
   ]);
 
   const upcomingCount = events.filter((e) => e.status === 'upcoming').length;
@@ -440,7 +479,7 @@ export const getOrganizerDashboardSummary = async (organizerId) => {
     totalParticipants > 0
       ? Number(((presentCount / totalParticipants) * 100).toFixed(1))
       : 0;
-  const avgRating = ratingsFacet[0]?.avg ? Number(ratingsFacet[0].avg.toFixed(1)) : 4.7;
+  const avgRating = ratingsFacet[0]?.avg ? Number(ratingsFacet[0].avg.toFixed(1)) : 0;
 
   return {
     metrics: {
@@ -452,5 +491,6 @@ export const getOrganizerDashboardSummary = async (organizerId) => {
     },
     events: events.slice(0, 5),
     attendance: attendanceFacet,
+    monthlyTrends,
   };
 };
