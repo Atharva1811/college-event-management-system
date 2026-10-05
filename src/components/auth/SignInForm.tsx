@@ -163,7 +163,7 @@ export default function SignInForm() {
           </div>
         </form>
 
-        <div className="mt-6 pt-5 border-t border-gray-100 dark:border-gray-800 text-center space-y-2">
+        <div className="mt-6 pt-5 border-t border-gray-100 dark:border-gray-800 text-center">
           <p className="text-xs text-gray-500 dark:text-gray-400">
             Don't have a student account yet?{" "}
             <Link
@@ -171,15 +171,6 @@ export default function SignInForm() {
               className="font-bold text-brand-600 hover:underline dark:text-brand-400"
             >
               Create Account
-            </Link>
-          </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            Faculty or Club Lead?{" "}
-            <Link
-              to="/apply-organizer"
-              className="font-bold text-brand-600 hover:underline dark:text-brand-400"
-            >
-              Apply as Organizer
             </Link>
           </p>
         </div>
