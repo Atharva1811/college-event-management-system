@@ -47,21 +47,6 @@ import AdminAttendance from "./pages/admin/AdminAttendance";
 import AdminAnalytics from "./pages/admin/AdminAnalytics";
 import AdminDatabaseInsights from "./pages/admin/AdminDatabaseInsights";
 import AdminApplications from "./pages/admin/AdminApplications";
-
-// Existing TailAdmin Showcase Pages (Preserved)
-import Calendar from "./pages/Calendar";
-import BasicTables from "./pages/Tables/BasicTables";
-import FormElements from "./pages/Forms/FormElements";
-import LineChart from "./pages/Charts/LineChart";
-import BarChart from "./pages/Charts/BarChart";
-import Alerts from "./pages/UiElements/Alerts";
-import Avatars from "./pages/UiElements/Avatars";
-import Badges from "./pages/UiElements/Badges";
-import Buttons from "./pages/UiElements/Buttons";
-import Images from "./pages/UiElements/Images";
-import Videos from "./pages/UiElements/Videos";
-import Blank from "./pages/Blank";
-
 export default function App() {
   return (
     <Router basename={import.meta.env.BASE_URL}>
@@ -131,20 +116,6 @@ export default function App() {
               <Route path="/admin/applications" element={<AdminApplications />} />
               <Route path="/admin/applications/admin" element={<AdminApplications />} />
             </Route>
-
-            {/* Preserved TailAdmin Demo Components */}
-            <Route path="/calendar" element={<Calendar />} />
-            <Route path="/form-elements" element={<FormElements />} />
-            <Route path="/basic-tables" element={<BasicTables />} />
-            <Route path="/line-chart" element={<LineChart />} />
-            <Route path="/bar-chart" element={<BarChart />} />
-            <Route path="/alerts" element={<Alerts />} />
-            <Route path="/avatars" element={<Avatars />} />
-            <Route path="/badge" element={<Badges />} />
-            <Route path="/buttons" element={<Buttons />} />
-            <Route path="/images" element={<Images />} />
-            <Route path="/videos" element={<Videos />} />
-            <Route path="/blank" element={<Blank />} />
           </Route>
         </Route>
 
