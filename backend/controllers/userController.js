@@ -115,6 +115,7 @@ export const updateUser = async (req, res, next) => {
     if (req.user.role !== 'admin' && req.user._id.toString() !== req.params.id) {
       return res.status(403).json({
         success: false,
+        code: 'FORBIDDEN',
         message: 'Forbidden: You cannot modify this user profile.',
       });
     }
@@ -156,6 +157,7 @@ export const updateOrganizerStatus = async (req, res, next) => {
     if (req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
+        code: 'FORBIDDEN',
         message: 'Forbidden: Only administrators can review organizer applications.',
       });
     }
@@ -220,6 +222,7 @@ export const updateAdminStatus = async (req, res, next) => {
     if (req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
+        code: 'FORBIDDEN',
         message: 'Forbidden: Only administrators can review admin applications.',
       });
     }
@@ -283,6 +286,7 @@ export const suspendUser = async (req, res, next) => {
     if (req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
+        code: 'FORBIDDEN',
         message: 'Forbidden: Only administrators can suspend accounts.',
       });
     }
@@ -356,6 +360,7 @@ export const reactivateUser = async (req, res, next) => {
     if (req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
+        code: 'FORBIDDEN',
         message: 'Forbidden: Only administrators can reactivate accounts.',
       });
     }
@@ -405,6 +410,7 @@ export const deleteUser = async (req, res, next) => {
     if (req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
+        code: 'FORBIDDEN',
         message: 'Forbidden: Only administrators can delete user accounts.',
       });
     }

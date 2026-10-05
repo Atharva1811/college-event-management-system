@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
 import { authService } from '../services/authService';
-import { isMockMode } from '../services/api';
+import { isMockMode, setApiAuthToken } from '../services/api';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -47,9 +47,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           if (storedToken.startsWith('mock_') && !isMockMode()) {
             localStorage.removeItem('cems_token');
             localStorage.removeItem('cems_user');
+            setApiAuthToken(null);
             setToken(null);
             setCurrentUser(null);
           } else {
+            setApiAuthToken(storedToken);
             setToken(storedToken);
             setCurrentUser(JSON.parse(storedUser));
           }
@@ -57,8 +59,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           if (isMockMode()) {
             const user = await authService.getMe();
             setCurrentUser(user);
-            setToken(localStorage.getItem('cems_token') || 'mock_token_init');
+            const mToken = localStorage.getItem('cems_token') || 'mock_token_init';
+            setToken(mToken);
+            setApiAuthToken(mToken);
           } else {
+            setApiAuthToken(null);
             setCurrentUser(null);
             setToken(null);
           }
@@ -71,6 +76,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     initializeAuth();
+
+    // Requirement 11: Multi-tab session synchronization without manual refresh
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'cems_token' || e.key === 'cems_user') {
+        const activeToken = localStorage.getItem('cems_token');
+        const activeUserStr = localStorage.getItem('cems_user');
+        if (!activeToken || !activeUserStr) {
+          setApiAuthToken(null);
+          setCurrentUser(null);
+          setToken(null);
+        } else {
+          try {
+            const parsed = JSON.parse(activeUserStr);
+            setApiAuthToken(activeToken);
+            setToken(activeToken);
+            setCurrentUser(parsed);
+          } catch {
+            setApiAuthToken(null);
+            setCurrentUser(null);
+            setToken(null);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   // Requirement 12: Periodic heartbeat session validation (approx every 20s)
@@ -110,7 +142,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const login = async (email: string, password?: string): Promise<User> => {
     setIsLoading(true);
     try {
+      sessionStorage.removeItem('cems_suspension_reason');
       const response = await authService.login(email, password);
+      setApiAuthToken(response.token);
       setCurrentUser(response.user);
       setToken(response.token);
       return response.user;
@@ -129,7 +163,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }): Promise<User> => {
     setIsLoading(true);
     try {
+      sessionStorage.removeItem('cems_suspension_reason');
       const response = await authService.register(userData);
+      setApiAuthToken(response.token);
       setCurrentUser(response.user);
       setToken(response.token);
       return response.user;
@@ -150,8 +186,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const logout = () => {
     authService.logout();
+    setApiAuthToken(null);
     setCurrentUser(null);
     setToken(null);
+    sessionStorage.removeItem('cems_suspension_reason');
   };
 
   const updateProfile = (updated: Partial<User>) => {

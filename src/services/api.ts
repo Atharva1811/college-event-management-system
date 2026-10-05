@@ -19,12 +19,31 @@ const api = axios.create({
   },
 });
 
-// Request interceptor to attach JWT token
+// Set or clear the common Authorization header directly on Axios instance
+export const setApiAuthToken = (token: string | null) => {
+  if (token) {
+    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  } else {
+    delete api.defaults.headers.common['Authorization'];
+  }
+};
+
+// Initialize with stored token if present on initial load
+const initialToken = localStorage.getItem('cems_token');
+if (initialToken) {
+  setApiAuthToken(initialToken);
+}
+
+// Request interceptor to attach or purge JWT token dynamically
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('cems_token');
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
+    if (config.headers) {
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      } else {
+        delete config.headers.Authorization;
+      }
     }
     return config;
   },

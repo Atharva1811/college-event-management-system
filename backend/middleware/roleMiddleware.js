@@ -13,6 +13,7 @@ export const authorize = (...roles) => {
     if (!normalizedAllowedRoles.includes(normalizedUserRole)) {
       return res.status(403).json({
         success: false,
+        code: 'FORBIDDEN',
         message: `Forbidden: User role '${req.user.role}' is not authorized to access this resource.`,
       });
     }

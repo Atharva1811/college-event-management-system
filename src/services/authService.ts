@@ -1,9 +1,10 @@
-import api, { isMockMode } from './api';
+import api, { isMockMode, setApiAuthToken } from './api';
 import { AuthResponse, User, UserRole } from '../types';
 import { mockUsers } from '../data/mock/mockUsers';
 
 export const authService = {
   async login(email: string, password?: string): Promise<AuthResponse> {
+    sessionStorage.removeItem('cems_suspension_reason');
     if (isMockMode()) {
       // Simulate realistic network delay
       await new Promise((res) => setTimeout(res, 400));
@@ -31,6 +32,7 @@ export const authService = {
       }
 
       const token = `mock_jwt_token_${foundUser._id}_${Date.now()}`;
+      setApiAuthToken(token);
       localStorage.setItem('cems_token', token);
       localStorage.setItem('cems_user', JSON.stringify(foundUser));
 
@@ -39,6 +41,7 @@ export const authService = {
 
     const response = await api.post('/auth/login', { email, password });
     const { user, token } = response.data.data;
+    setApiAuthToken(token);
     localStorage.setItem('cems_token', token);
     localStorage.setItem('cems_user', JSON.stringify(user));
     return { user, token };
@@ -177,14 +180,17 @@ export const authService = {
 
       mockUsers.push(newUser);
       const token = `mock_jwt_token_${newUser._id}_${Date.now()}`;
+      setApiAuthToken(token);
       localStorage.setItem('cems_token', token);
       localStorage.setItem('cems_user', JSON.stringify(newUser));
 
       return { user: newUser, token };
     }
 
+    sessionStorage.removeItem('cems_suspension_reason');
     const response = await api.post('/auth/register', userData);
     const { user, token } = response.data.data;
+    setApiAuthToken(token);
     localStorage.setItem('cems_token', token);
     localStorage.setItem('cems_user', JSON.stringify(user));
     return { user, token };
@@ -200,18 +206,29 @@ export const authService = {
       const defaultUser = mockUsers[4]; // Alex Johnson
       localStorage.setItem('cems_user', JSON.stringify(defaultUser));
       localStorage.setItem('cems_token', 'mock_jwt_token_default');
+      setApiAuthToken('mock_jwt_token_default');
       return defaultUser;
+    }
+
+    const currentToken = localStorage.getItem('cems_token');
+    if (!currentToken) {
+      throw new Error('Not authenticated');
     }
 
     const response = await api.get('/auth/me');
     const user = response.data.data;
-    localStorage.setItem('cems_user', JSON.stringify(user));
+    // Guard against race condition: only persist if active token matches
+    if (localStorage.getItem('cems_token') === currentToken) {
+      localStorage.setItem('cems_user', JSON.stringify(user));
+    }
     return user;
   },
 
   logout(): void {
     localStorage.removeItem('cems_token');
     localStorage.removeItem('cems_user');
+    sessionStorage.removeItem('cems_suspension_reason');
+    setApiAuthToken(null);
   },
 
   // Helper for ADBMS & Frontend demo: switch between student, organizer, admin in 1-click!

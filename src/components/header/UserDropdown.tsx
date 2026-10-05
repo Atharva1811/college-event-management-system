@@ -19,7 +19,7 @@ export default function UserDropdown() {
   const handleSignOut = () => {
     closeDropdown();
     logout();
-    navigate("/signin");
+    navigate("/signin", { replace: true, state: {} });
   };
 
   const displayName = currentUser?.name || "Student User";

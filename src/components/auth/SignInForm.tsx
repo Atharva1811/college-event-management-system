@@ -30,20 +30,50 @@ export default function SignInForm() {
       const user = await login(email, password);
       showToast(`Welcome back, ${user.name}!`, "success");
 
-      // Check for redirect location
-      const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
-      if (from) {
-        navigate(from, { replace: true });
-        return;
-      }
+      // Check for redirect location and strictly validate against the newly authenticated user's role
+      const rawFrom = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
 
-      // Role-based redirection
-      if (user.role === "admin") {
-        navigate("/admin/dashboard", { replace: true });
-      } else if (user.role === "organizer") {
-        navigate("/organizer/dashboard", { replace: true });
+      const isPathAllowedForRole = (path: string, userRole: string): boolean => {
+        if (
+          !path ||
+          path === "/" ||
+          path.includes("/signin") ||
+          path.includes("/login") ||
+          path.includes("/unauthorized") ||
+          path.includes("/access-denied")
+        ) {
+          return false;
+        }
+        if (userRole === "admin") {
+          return path.startsWith("/admin") || path.startsWith("/profile") || path.startsWith("/settings");
+        }
+        if (userRole === "organizer") {
+          return (
+            (path.startsWith("/organizer") || path.startsWith("/profile") || path.startsWith("/settings")) &&
+            !path.startsWith("/admin") &&
+            !path.startsWith("/student")
+          );
+        }
+        if (userRole === "student") {
+          return (
+            (path.startsWith("/student") || path.startsWith("/profile") || path.startsWith("/settings")) &&
+            !path.startsWith("/admin") &&
+            !path.startsWith("/organizer")
+          );
+        }
+        return false;
+      };
+
+      const getDefaultDashboard = (userRole: string): string => {
+        if (userRole === "admin") return "/admin/dashboard";
+        if (userRole === "organizer") return "/organizer/dashboard";
+        return "/student/dashboard";
+      };
+
+      if (rawFrom && isPathAllowedForRole(rawFrom, user.role)) {
+        navigate(rawFrom, { replace: true });
       } else {
-        navigate("/student/dashboard", { replace: true });
+        navigate(getDefaultDashboard(user.role), { replace: true });
       }
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
