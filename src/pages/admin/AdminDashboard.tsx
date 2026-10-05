@@ -131,6 +131,71 @@ export default function AdminDashboard() {
         </Link>
       </div>
 
+      {/* Real-time Governance Approvals Quick Action Cards (Requirements 7, 8, 42) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-500/10 via-indigo-500/5 to-transparent border border-purple-200/80 dark:border-purple-800/40 flex items-center justify-between">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 flex items-center justify-center text-xl shrink-0">
+              🛡️
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-gray-900 dark:text-white text-sm">
+                  Admin Applications
+                </h3>
+                <span className={`px-2 py-0.5 text-[11px] font-bold rounded-full ${
+                  (metrics.pendingAdminApplications ?? 0) > 0
+                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300 animate-pulse'
+                    : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                }`}>
+                  {metrics.pendingAdminApplications ?? 0} Pending
+                </span>
+              </div>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                Review faculty and staff requests for administrator privileges
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/admin/applications"
+            className="px-3.5 py-2 text-xs font-bold rounded-xl bg-purple-600 hover:bg-purple-700 text-white shadow-md shadow-purple-600/20 transition-all shrink-0"
+          >
+            Review Applications
+          </Link>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-500/10 via-sky-500/5 to-transparent border border-blue-200/80 dark:border-blue-800/40 flex items-center justify-between">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 flex items-center justify-center text-xl shrink-0">
+              🎓
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-gray-900 dark:text-white text-sm">
+                  Organizer Applications
+                </h3>
+                <span className={`px-2 py-0.5 text-[11px] font-bold rounded-full ${
+                  (metrics.pendingOrganizerApplications ?? 0) > 0
+                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300'
+                    : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                }`}>
+                  {metrics.pendingOrganizerApplications ?? 0} Pending
+                </span>
+              </div>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                Review department organizer upgrade requests
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/admin/organizers"
+            className="px-3.5 py-2 text-xs font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20 transition-all shrink-0"
+          >
+            Review Organizers
+          </Link>
+        </div>
+      </div>
+
       {/* 8 Comprehensive Cards (2 rows of 4) */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="p-4 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200/80 dark:border-gray-700/60 shadow-sm">

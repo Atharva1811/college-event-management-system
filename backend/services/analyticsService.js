@@ -326,6 +326,9 @@ export const getAdminDashboardSummary = async () => {
       Registration.countDocuments({ status: 'registered' }),
       Event.countDocuments({ status: 'upcoming' }),
       Event.countDocuments({ status: 'completed' }),
+      User.countDocuments({ adminStatus: 'pending' }),
+      User.countDocuments({ adminStatus: { $in: ['pending', 'approved', 'denied'] } }),
+      User.countDocuments({ organizerStatus: 'pending' }),
     ]),
     Registration.aggregate([
       {
@@ -356,6 +359,9 @@ export const getAdminDashboardSummary = async () => {
     totalRegistrations,
     upcomingEvents,
     completedEvents,
+    pendingAdminApplications,
+    totalAdminApplications,
+    pendingOrganizerApplications,
   ] = counts;
 
   const attendanceFacet = analyticsFacet[0]?.attendanceBreakdown || [];
@@ -381,6 +387,9 @@ export const getAdminDashboardSummary = async () => {
       completedEvents,
       attendanceRate,
       averageRating,
+      pendingAdminApplications,
+      totalAdminApplications,
+      pendingOrganizerApplications,
     },
     categories: await getEventsByCategory(),
     departments: await getDepartmentParticipation(),

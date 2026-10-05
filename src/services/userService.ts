@@ -131,7 +131,58 @@ export const userService = {
     return response.data.data;
   },
 
-  async updateAdminStatus(id: string, status: 'approved' | 'denied'): Promise<User> {
+  async getAdminApplications(params: {
+    status?: 'all' | 'pending' | 'approved' | 'denied';
+    search?: string;
+    page?: number;
+    limit?: number;
+  } = {}): Promise<{
+    applications: User[];
+    counts: { pending: number; approved: number; denied: number; total: number };
+    pagination: Pagination;
+  }> {
+    if (isMockMode()) {
+      await new Promise((r) => setTimeout(r, 200));
+      let list = getStoredUsers().filter((u) => u.adminStatus && u.adminStatus !== 'none');
+      if (params.status && params.status !== 'all') {
+        list = list.filter((u) => u.adminStatus === params.status);
+      }
+      if (params.search) {
+        const query = params.search.toLowerCase();
+        list = list.filter(
+          (u) =>
+            u.name.toLowerCase().includes(query) ||
+            u.email.toLowerCase().includes(query) ||
+            (u.department && u.department.toLowerCase().includes(query)) ||
+            (u.phone && u.phone.includes(query))
+        );
+      }
+      const page = params.page || 1;
+      const limit = params.limit || 10;
+      const total = list.length;
+      const totalPages = Math.ceil(total / limit) || 1;
+      const startIndex = (page - 1) * limit;
+
+      const allApps = getStoredUsers().filter((u) => u.adminStatus && u.adminStatus !== 'none');
+      const counts = {
+        pending: allApps.filter((u) => u.adminStatus === 'pending').length,
+        approved: allApps.filter((u) => u.adminStatus === 'approved').length,
+        denied: allApps.filter((u) => u.adminStatus === 'denied').length,
+        total: allApps.length,
+      };
+
+      return {
+        applications: list.slice(startIndex, startIndex + limit),
+        counts,
+        pagination: { total, page, limit, totalPages },
+      };
+    }
+
+    const response = await api.get('/users/admin-applications', { params });
+    return response.data.data;
+  },
+
+  async updateAdminStatus(id: string, status: 'approved' | 'denied', reason?: string): Promise<User> {
     if (isMockMode()) {
       await new Promise((r) => setTimeout(r, 250));
       const list = getStoredUsers();
@@ -141,6 +192,8 @@ export const userService = {
       list[index] = {
         ...list[index],
         adminStatus: status,
+        adminDenialReason: status === 'denied' ? reason : undefined,
+        adminProcessedAt: new Date().toISOString(),
         role: status === 'approved' ? 'admin' : list[index].role,
         isActive: status === 'approved',
       };
@@ -148,7 +201,7 @@ export const userService = {
       return list[index];
     }
 
-    const response = await api.patch(`/users/${id}/admin-status`, { status });
+    const response = await api.patch(`/users/${id}/admin-status`, { status, reason });
     return response.data.data;
   },
 

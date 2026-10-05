@@ -46,6 +46,7 @@ import AdminRegistrations from "./pages/admin/AdminRegistrations";
 import AdminAttendance from "./pages/admin/AdminAttendance";
 import AdminAnalytics from "./pages/admin/AdminAnalytics";
 import AdminDatabaseInsights from "./pages/admin/AdminDatabaseInsights";
+import AdminApplications from "./pages/admin/AdminApplications";
 
 // Existing TailAdmin Showcase Pages (Preserved)
 import Calendar from "./pages/Calendar";
@@ -127,6 +128,8 @@ export default function App() {
               <Route path="/admin/attendance" element={<AdminAttendance />} />
               <Route path="/admin/analytics" element={<AdminAnalytics />} />
               <Route path="/admin/database-insights" element={<AdminDatabaseInsights />} />
+              <Route path="/admin/applications" element={<AdminApplications />} />
+              <Route path="/admin/applications/admin" element={<AdminApplications />} />
             </Route>
 
             {/* Preserved TailAdmin Demo Components */}

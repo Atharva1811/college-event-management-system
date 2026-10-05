@@ -8,6 +8,15 @@ const router = express.Router();
 router.use(protect);
 
 router.get('/', authorize('admin'), userController.getUsers);
+router.get('/admin-applications', authorize('admin'), userController.getAdminApplications);
+router.patch('/admin-applications/:id/approve', authorize('admin'), (req, res, next) => {
+  req.body = { ...req.body, status: 'approved' };
+  return userController.updateAdminStatus(req, res, next);
+});
+router.patch('/admin-applications/:id/deny', authorize('admin'), (req, res, next) => {
+  req.body = { ...req.body, status: 'denied' };
+  return userController.updateAdminStatus(req, res, next);
+});
 router.get('/:id', userController.getUserById);
 router.put('/:id', userController.updateUser);
 router.patch('/:id/organizer-status', authorize('admin'), userController.updateOrganizerStatus);

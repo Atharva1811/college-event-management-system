@@ -100,6 +100,20 @@ const userSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    adminDenialReason: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    adminProcessedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    adminProcessedAt: {
+      type: Date,
+      default: null,
+    },
     resetPasswordToken: {
       type: String,
       select: false,

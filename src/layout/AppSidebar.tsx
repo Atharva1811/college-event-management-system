@@ -14,6 +14,7 @@ import {
   PlusIcon,
   CheckCircleIcon,
   ChatIcon,
+  TaskIcon,
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
 import { useAuth } from "../context/AuthContext";
@@ -65,6 +66,11 @@ export const AppSidebar: React.FC = () => {
           name: "Organizers",
           icon: <UserCircleIcon />,
           path: "/admin/organizers",
+        },
+        {
+          name: "Admin Applications",
+          icon: <TaskIcon />,
+          path: "/admin/applications",
         },
         {
           name: "Events",

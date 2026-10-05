@@ -41,6 +41,9 @@ export interface User {
   applicationReason?: string;
   adminStatus?: 'none' | 'pending' | 'approved' | 'denied';
   adminReason?: string;
+  adminDenialReason?: string;
+  adminProcessedBy?: User | string;
+  adminProcessedAt?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -153,6 +156,9 @@ export interface AdminAnalyticsSummary {
     completedEvents: number;
     attendanceRate: number;
     averageRating: number;
+    pendingAdminApplications?: number;
+    totalAdminApplications?: number;
+    pendingOrganizerApplications?: number;
   };
   categories: Array<{ category: EventCategory; count: number; totalCapacity: number }>;
   departments: Array<{ department: string; totalRegistrations: number; presentCount: number; attendanceRate: number }>;
