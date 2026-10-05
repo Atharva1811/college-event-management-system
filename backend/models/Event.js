@@ -42,6 +42,25 @@ const eventSchema = new mongoose.Schema(
       required: [true, 'Venue is required'],
       trim: true,
     },
+    location: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Location',
+      default: null,
+    },
+    department: {
+      type: String,
+      enum: [
+        'Computer Science',
+        'Information Technology',
+        'AI & Data Science',
+        'Electronics',
+        'Mechanical',
+        'Civil',
+        'MBA',
+        'General',
+      ],
+      default: 'General',
+    },
     organizer: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

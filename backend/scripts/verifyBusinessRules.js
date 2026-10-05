@@ -138,6 +138,33 @@ try {
   console.error('  ✗ FAILED: Valid upcoming event was rejected:', err.message);
 }
 
+// 8. Location Capacity Constraints (Requirement 32)
+console.log('\nTEST SUITE 8: Location Capacity Constraints');
+import { assertLocationCapacity } from '../utils/eventRules.js';
+assertThrows(
+  () => assertLocationCapacity(120, 100),
+  400,
+  'Event capacity (120) exceeding location capacity (100) rejected'
+);
+
+try {
+  assertLocationCapacity(80, 100);
+  passed++;
+  console.log('  ✓ Event capacity (80) within location capacity (100) permitted');
+} catch (err) {
+  failed++;
+  console.error('  ✗ FAILED: Valid capacity was rejected:', err.message);
+}
+
+try {
+  assertLocationCapacity(100, 100);
+  passed++;
+  console.log('  ✓ Event capacity exactly matching location capacity permitted');
+} catch (err) {
+  failed++;
+  console.error('  ✗ FAILED: Exact match capacity was rejected:', err.message);
+}
+
 console.log('\n========================================');
 console.log(`TOTAL: ${passed + failed} | PASSED: ${passed} | FAILED: ${failed}`);
 console.log('Production MongoDB data was not modified.');

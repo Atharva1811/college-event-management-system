@@ -10,7 +10,7 @@ export const getEvents = async (req, res, next) => {
       });
     }
 
-    const result = await eventService.listEvents(req.query);
+    const result = await eventService.listEvents(req.query, req.user);
     res.status(200).json({
       success: true,
       message: 'Events retrieved successfully',
@@ -50,7 +50,7 @@ export const createEvent = async (req, res, next) => {
       });
     }
 
-    const event = await eventService.createEvent(req.body, req.user._id);
+    const event = await eventService.createEvent(req.body, req.user);
     res.status(201).json({
       success: true,
       message: 'Event created successfully.',

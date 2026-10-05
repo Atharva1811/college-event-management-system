@@ -1,7 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
 import { userService } from '../../services/userService';
-import { eventService } from '../../services/eventService';
-import { calculateEventStatus } from '../../utils/eventRules';
 import { useToast } from '../../context/ToastContext';
 import { User, Department } from '../../types';
 
@@ -40,18 +38,6 @@ export default function AdminOrganizers() {
     loadOrganizers();
   }, [loadOrganizers]);
 
-  const handleToggleStatus = async (user: User) => {
-    const newStatus = !user.isActive;
-    try {
-      await userService.toggleUserStatus(user._id, newStatus);
-      showToast(`Organizer account ${newStatus ? 'activated' : 'deactivated'}.`, 'success');
-      await loadOrganizers();
-    } catch (err: unknown) {
-      const errorObj = err as { message?: string };
-      showToast(errorObj.message || 'Status toggle failed', 'error');
-    }
-  };
-
   const handleUpdateApplicationStatus = async (user: User, status: 'approved' | 'denied') => {
     try {
       await userService.updateOrganizerStatus(user._id, status);
@@ -66,23 +52,36 @@ export default function AdminOrganizers() {
     }
   };
 
+  const handleSuspendOrganizer = async (user: User) => {
+    const reason = window.prompt(`Enter suspension reason for organizer "${user.name}":`, 'Faculty conduct policy violation');
+    if (reason === null) return;
+    try {
+      await userService.suspendUser(user._id, reason);
+      showToast(`Organizer "${user.name}" has been suspended.`, 'success');
+      await loadOrganizers();
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showToast(errorObj.response?.data?.message || errorObj.message || 'Suspension failed', 'error');
+    }
+  };
+
+  const handleReactivateOrganizer = async (user: User) => {
+    if (!window.confirm(`Reactivate account for organizer "${user.name}"?`)) return;
+    try {
+      await userService.reactivateUser(user._id);
+      showToast(`Organizer "${user.name}" account reactivated.`, 'success');
+      await loadOrganizers();
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showToast(errorObj.response?.data?.message || errorObj.message || 'Reactivation failed', 'error');
+    }
+  };
+
   const handleDeleteOrganizer = async (user: User) => {
-    if (!window.confirm(`Are you sure you want to delete organizer ${user.name}? This action cannot be undone.`)) {
+    if (!window.confirm(`Are you sure you want to delete organizer ${user.name}? If they have upcoming events, they will be deterministically reassigned to an active organizer in ${user.department}.`)) {
       return;
     }
     try {
-      // Check if organizer has an ongoing event
-      const eventsRes = await eventService.getEvents({ limit: 100 });
-      const hasOngoing = eventsRes.events.some((e) => {
-        const orgId = typeof e.organizer === 'object' ? e.organizer._id : e.organizer;
-        return orgId === user._id && calculateEventStatus(e) === 'ongoing';
-      });
-
-      if (hasOngoing) {
-        showToast('Organizer cannot be deleted while they have an ongoing event.', 'error');
-        return;
-      }
-
       await userService.deleteUser(user._id);
       showToast(`Organizer ${user.name} removed successfully.`, 'success');
       await loadOrganizers();
@@ -346,14 +345,16 @@ export default function AdminOrganizers() {
                       <td className="py-3.5 px-4">
                         <span
                           className={`inline-block px-2.5 py-0.5 text-[11px] font-bold uppercase rounded-md ${
-                            orgStatus === 'approved'
+                            org.status === 'suspended'
+                              ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400'
+                              : orgStatus === 'approved'
                               ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
                               : orgStatus === 'pending'
                               ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
                               : 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400'
                           }`}
                         >
-                          {orgStatus}
+                          {org.status === 'suspended' ? 'Suspended' : orgStatus}
                         </span>
                       </td>
                       <td className="py-3.5 px-4 text-right space-x-2 whitespace-nowrap">
@@ -374,14 +375,21 @@ export default function AdminOrganizers() {
                           </>
                         ) : (
                           <>
-                            <button
-                              onClick={() => handleToggleStatus(org)}
-                              className={`text-xs font-bold cursor-pointer hover:underline ${
-                                org.isActive ? 'text-amber-600' : 'text-emerald-600'
-                              }`}
-                            >
-                              {org.isActive ? 'Suspend' : 'Activate'}
-                            </button>
+                            {org.status === 'suspended' ? (
+                              <button
+                                onClick={() => handleReactivateOrganizer(org)}
+                                className="text-xs font-bold text-emerald-600 hover:underline cursor-pointer"
+                              >
+                                Reactivate
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleSuspendOrganizer(org)}
+                                className="text-xs font-bold text-amber-600 hover:underline cursor-pointer"
+                              >
+                                Suspend
+                              </button>
+                            )}
                             <button
                               onClick={() => handleDeleteOrganizer(org)}
                               className="text-xs font-bold text-rose-600 hover:underline cursor-pointer ml-2"

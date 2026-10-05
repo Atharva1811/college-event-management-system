@@ -87,6 +87,41 @@ export const authService = {
     return response.data;
   },
 
+  async applyAdmin(applicationData: {
+    name: string;
+    email: string;
+    password?: string;
+    phone?: string;
+    department?: string;
+    reason?: string;
+  }): Promise<{ message: string }> {
+    if (isMockMode()) {
+      await new Promise((res) => setTimeout(res, 500));
+      return {
+        message: 'Administrator application submitted successfully. It is pending active admin review.',
+      };
+    }
+
+    const response = await api.post('/auth/apply-admin', applicationData);
+    return response.data;
+  },
+
+  async applyOrganizerUpgrade(data: {
+    department?: string;
+    reason?: string;
+  }): Promise<{ message: string; user: User }> {
+    if (isMockMode()) {
+      await new Promise((res) => setTimeout(res, 400));
+      return {
+        message: 'Your faculty organizer upgrade request has been submitted.',
+        user: mockUsers[4],
+      };
+    }
+
+    const response = await api.post('/auth/apply-organizer-upgrade', data);
+    return response.data;
+  },
+
   async forgotPassword(email: string): Promise<{ message: string }> {
     if (isMockMode()) {
       await new Promise((res) => setTimeout(res, 400));

@@ -41,10 +41,11 @@ export const protect = async (req, res, next) => {
         });
       }
 
-      if (!req.user.isActive) {
+      if (!req.user.isActive || req.user.status === 'suspended') {
         return res.status(403).json({
           success: false,
-          message: 'Your account has been deactivated. Please contact administrator.',
+          code: 'ACCOUNT_SUSPENDED',
+          message: req.user.suspensionReason || 'Your account has been suspended by the administrator.',
         });
       }
 
@@ -63,4 +64,38 @@ export const protect = async (req, res, next) => {
       message: 'Not authorized, no bearer token provided.',
     });
   }
+};
+
+export const optionalProtect = async (req, res, next) => {
+  let token;
+
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith('Bearer')
+  ) {
+    try {
+      token = req.headers.authorization.split(' ')[1];
+      if (token && process.env.JWT_SECRET) {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        if (isConnected()) {
+          const user = await User.findById(decoded.id).select('-password');
+          if (user && user.isActive && user.status !== 'suspended') {
+            req.user = user;
+          }
+        } else {
+          req.user = {
+            _id: decoded.id,
+            role: decoded.role,
+            name: decoded.name || 'User',
+            email: decoded.email,
+            department: decoded.department,
+          };
+        }
+      }
+    } catch {
+      // Token invalid or expired - proceed as unauthenticated without failing
+    }
+  }
+
+  next();
 };

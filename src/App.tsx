@@ -13,6 +13,7 @@ import ResetPassword from "./pages/AuthPages/ResetPassword";
 import OrganizerApplication from "./pages/AuthPages/OrganizerApplication";
 import NotFound from "./pages/OtherPage/NotFound";
 import Unauthorized from "./pages/OtherPage/Unauthorized";
+import AccessDenied from "./pages/OtherPage/AccessDenied";
 
 // Common Pages
 import ProfilePage from "./pages/common/ProfilePage";
@@ -40,6 +41,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminStudents from "./pages/admin/AdminStudents";
 import AdminOrganizers from "./pages/admin/AdminOrganizers";
 import AdminEvents from "./pages/admin/AdminEvents";
+import AdminLocations from "./pages/admin/AdminLocations";
 import AdminRegistrations from "./pages/admin/AdminRegistrations";
 import AdminAttendance from "./pages/admin/AdminAttendance";
 import AdminAnalytics from "./pages/admin/AdminAnalytics";
@@ -75,6 +77,7 @@ export default function App() {
         <Route path="/apply-organizer" element={<OrganizerApplication />} />
         <Route path="/organizer/apply" element={<OrganizerApplication />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
+        <Route path="/access-denied" element={<AccessDenied />} />
 
         {/* Protected Dashboard Layout */}
         <Route element={<ProtectedRoute />}>
@@ -119,6 +122,7 @@ export default function App() {
               <Route path="/admin/students" element={<AdminStudents />} />
               <Route path="/admin/organizers" element={<AdminOrganizers />} />
               <Route path="/admin/events" element={<AdminEvents />} />
+              <Route path="/admin/locations" element={<AdminLocations />} />
               <Route path="/admin/registrations" element={<AdminRegistrations />} />
               <Route path="/admin/attendance" element={<AdminAttendance />} />
               <Route path="/admin/analytics" element={<AdminAnalytics />} />

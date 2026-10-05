@@ -82,6 +82,60 @@ export const login = async (req, res, next) => {
   }
 };
 
+export const applyAdmin = async (req, res, next) => {
+  try {
+    if (!isConnected()) {
+      return res.status(503).json({
+        success: false,
+        message: 'Database is not connected. Please verify MongoDB connection.',
+      });
+    }
+
+    const { name, email, password, phone, department, reason } = req.body;
+    const result = await authService.applyAdmin({
+      name,
+      email,
+      password,
+      phone,
+      department,
+      reason,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: result.message,
+      data: result.applicant,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const applyOrganizerUpgrade = async (req, res, next) => {
+  try {
+    if (!isConnected()) {
+      return res.status(503).json({
+        success: false,
+        message: 'Database is not connected. Please verify MongoDB connection.',
+      });
+    }
+
+    const { department, reason } = req.body;
+    const result = await authService.applyOrganizerUpgrade(req.user._id, {
+      department,
+      reason,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: result.message,
+      data: result.user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getMe = async (req, res, next) => {
   try {
     if (!isConnected()) {
@@ -96,6 +150,15 @@ export const getMe = async (req, res, next) => {
       return res.status(404).json({
         success: false,
         message: 'User not found.',
+      });
+    }
+
+    // Suspension heartbeat detection (Requirement 12)
+    if (user.status === 'suspended' || !user.isActive) {
+      return res.status(403).json({
+        success: false,
+        code: 'ACCOUNT_SUSPENDED',
+        message: user.suspensionReason || 'Your account has been suspended by the administrator.',
       });
     }
 

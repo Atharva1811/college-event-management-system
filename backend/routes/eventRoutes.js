@@ -5,14 +5,14 @@ import {
   createEventValidator,
   updateEventValidator,
 } from '../validators/eventValidators.js';
-import { protect } from '../middleware/authMiddleware.js';
+import { protect, optionalProtect } from '../middleware/authMiddleware.js';
 import { authorize } from '../middleware/roleMiddleware.js';
 
 const router = express.Router();
 
-// Public / Authenticated read routes
-router.get('/', eventController.getEvents);
-router.get('/:id', eventController.getEvent);
+// Public / Authenticated read routes (optionalProtect allows organizers to see scoped departmental events)
+router.get('/', optionalProtect, eventController.getEvents);
+router.get('/:id', optionalProtect, eventController.getEvent);
 router.get('/:eventId/feedback', feedbackController.getEventFeedback);
 
 // Protected routes (Organizer and Admin)

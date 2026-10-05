@@ -31,13 +31,37 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor for centralized error and 401 token expiry handling
+// Response interceptor for centralized error, 401 token expiry, and 403 suspension handling
 api.interceptors.response.use(
   (response) => response,
-  (error: AxiosError<{ success?: boolean; message?: string }>) => {
+  (error: AxiosError<{ success?: boolean; message?: string; code?: string }>) => {
     if (error.response?.data?.message) {
       error.message = error.response.data.message;
     }
+
+    const base = import.meta.env.BASE_URL || '/';
+    const normalizedBase = base.endsWith('/') ? base : `${base}/`;
+    const currentPath = window.location.pathname;
+
+    // Requirement 11: Global Suspension Detection & Redirection to /access-denied
+    if (
+      error.response?.status === 403 &&
+      (error.response?.data?.code === 'ACCOUNT_SUSPENDED' ||
+        error.response?.data?.message?.toLowerCase().includes('suspended'))
+    ) {
+      const suspensionMsg =
+        error.response?.data?.message ||
+        'Your account has been suspended by the administrator.';
+      sessionStorage.setItem('cems_suspension_reason', suspensionMsg);
+      localStorage.removeItem('cems_token');
+      localStorage.removeItem('cems_user');
+
+      if (!currentPath.includes('/access-denied')) {
+        window.location.href = `${normalizedBase}access-denied`;
+      }
+      return Promise.reject(error);
+    }
+
     const isAuthEndpoint =
       error.config?.url?.includes('/auth/login') ||
       error.config?.url?.includes('/auth/register');
@@ -45,9 +69,6 @@ api.interceptors.response.use(
       // Clear token on 401 session expiry and redirect to login if not already on auth page
       localStorage.removeItem('cems_token');
       localStorage.removeItem('cems_user');
-      const base = import.meta.env.BASE_URL || '/';
-      const normalizedBase = base.endsWith('/') ? base : `${base}/`;
-      const currentPath = window.location.pathname;
       if (
         !currentPath.includes('/signin') &&
         !currentPath.includes('/login')

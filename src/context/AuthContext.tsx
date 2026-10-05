@@ -18,6 +18,10 @@ interface AuthContextType {
     department?: string;
     role?: UserRole;
   }) => Promise<User>;
+  applyOrganizerUpgrade: (data: {
+    department?: string;
+    reason?: string;
+  }) => Promise<any>;
   logout: () => void;
   updateProfile: (updated: Partial<User>) => void;
   switchDemoRole: (role: UserRole) => Promise<User>;
@@ -69,6 +73,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     initializeAuth();
   }, []);
 
+  // Requirement 12: Periodic heartbeat session validation (approx every 20s)
+  useEffect(() => {
+    if (!token || !currentUser || isMockMode()) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const user = await authService.getMe();
+        if (user.status === 'suspended' || (user as any).isActive === false) {
+          sessionStorage.setItem(
+            'cems_suspension_reason',
+            (user as any).suspensionReason || 'Your account has been suspended by the administrator.'
+          );
+          logout();
+          const base = import.meta.env.BASE_URL || '/';
+          const normalizedBase = base.endsWith('/') ? base : `${base}/`;
+          window.location.href = `${normalizedBase}access-denied`;
+        }
+      } catch (err: any) {
+        if (
+          err?.response?.status === 403 &&
+          (err?.response?.data?.code === 'ACCOUNT_SUSPENDED' ||
+            err?.response?.data?.message?.toLowerCase().includes('suspended'))
+        ) {
+          logout();
+          const base = import.meta.env.BASE_URL || '/';
+          const normalizedBase = base.endsWith('/') ? base : `${base}/`;
+          window.location.href = `${normalizedBase}access-denied`;
+        }
+      }
+    }, 20000);
+
+    return () => clearInterval(interval);
+  }, [token, currentUser]);
+
   const login = async (email: string, password?: string): Promise<User> => {
     setIsLoading(true);
     try {
@@ -98,6 +136,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const applyOrganizerUpgrade = async (data: { department?: string; reason?: string }) => {
+    const res = await authService.applyOrganizerUpgrade(data);
+    if (res.user && currentUser) {
+      const updated = { ...currentUser, organizerStatus: res.user.organizerStatus };
+      setCurrentUser(updated);
+      localStorage.setItem('cems_user', JSON.stringify(updated));
+    }
+    return res;
   };
 
   const logout = () => {
@@ -139,6 +187,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         isLoading,
         login,
         register,
+        applyOrganizerUpgrade,
         logout,
         updateProfile,
         switchDemoRole,

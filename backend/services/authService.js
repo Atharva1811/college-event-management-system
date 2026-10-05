@@ -99,6 +99,100 @@ export const applyOrganizer = async ({ name, email, password, phone, department,
   };
 };
 
+export const applyAdmin = async ({ name, email, password, phone, department, reason }) => {
+  const existingUser = await User.findOne({ email });
+  if (existingUser) {
+    const error = new Error('A user with this email address already exists.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!password || password.length < 6) {
+    const error = new Error('Password must be at least 6 characters long.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  // Requirement 7: Public registration never creates active Admin directly
+  const user = await User.create({
+    name,
+    email,
+    password,
+    phone: phone || '',
+    department: department || 'General',
+    role: 'student',
+    adminStatus: 'pending',
+    adminReason: reason || '',
+    isActive: false, // Inactive until approved by an existing authorized admin
+  });
+
+  await notifyAdmins({
+    type: 'admin_application',
+    title: 'New Administrator Application',
+    message: `New administrator access request received from ${name} (${department || 'General'}).`,
+    relatedEvent: null,
+  });
+
+  return {
+    message: 'Your administrator application has been submitted and is currently pending review by an active administrator.',
+    applicant: {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      department: user.department,
+      adminStatus: 'pending',
+    },
+  };
+};
+
+export const applyOrganizerUpgrade = async (userId, { department, reason }) => {
+  const user = await User.findById(userId);
+  if (!user) {
+    const error = new Error('User not found.');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (user.role === 'admin') {
+    return { message: 'You already possess administrator privileges.', user };
+  }
+
+  if (user.role === 'organizer') {
+    return { message: 'You are already an authorized organizer.', user };
+  }
+
+  if (user.organizerStatus === 'pending') {
+    return { message: 'Your organizer upgrade application is already pending review.', user };
+  }
+
+  user.organizerStatus = 'pending';
+  user.applicationReason = reason || '';
+  if (department) {
+    user.department = department;
+  }
+
+  await user.save();
+
+  await notifyAdmins({
+    type: 'organizer_application',
+    title: 'Student Organizer Application',
+    message: `Registered student ${user.name} applied to become a faculty/department organizer (${user.department}).`,
+    relatedEvent: null,
+  });
+
+  return {
+    message: 'Your application to become an event organizer has been submitted for administrative review.',
+    user: {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      department: user.department,
+      role: user.role,
+      organizerStatus: user.organizerStatus,
+    },
+  };
+};
+
 export const loginUser = async ({ email, password }) => {
   const user = await User.findOne({ email }).select('+password');
   if (!user) {
@@ -114,6 +208,14 @@ export const loginUser = async ({ email, password }) => {
     throw error;
   }
 
+  // Check account suspension (Requirements 10, 11)
+  if (user.status === 'suspended') {
+    const error = new Error(user.suspensionReason || 'Your account has been suspended by the administrator.');
+    error.statusCode = 403;
+    error.code = 'ACCOUNT_SUSPENDED';
+    throw error;
+  }
+
   // Check organizer approval status
   if (user.role === 'organizer') {
     if (user.organizerStatus === 'pending') {
@@ -126,6 +228,18 @@ export const loginUser = async ({ email, password }) => {
       error.statusCode = 403;
       throw error;
     }
+  }
+
+  // Check admin application approval status
+  if (user.adminStatus === 'pending') {
+    const error = new Error('Your administrator application is currently pending review by an active administrator.');
+    error.statusCode = 403;
+    throw error;
+  }
+  if (user.adminStatus === 'denied') {
+    const error = new Error('Your administrator application was denied by the system administrator.');
+    error.statusCode = 403;
+    throw error;
   }
 
   if (!user.isActive) {
@@ -145,7 +259,9 @@ export const loginUser = async ({ email, password }) => {
       phone: user.phone,
       department: user.department,
       avatar: user.avatar,
+      status: user.status,
       organizerStatus: user.organizerStatus,
+      adminStatus: user.adminStatus,
     },
     token,
   };

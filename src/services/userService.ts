@@ -130,4 +130,67 @@ export const userService = {
     const response = await api.patch(`/users/${id}/organizer-status`, { status });
     return response.data.data;
   },
+
+  async updateAdminStatus(id: string, status: 'approved' | 'denied'): Promise<User> {
+    if (isMockMode()) {
+      await new Promise((r) => setTimeout(r, 250));
+      const list = getStoredUsers();
+      const index = list.findIndex((u) => u._id === id);
+      if (index === -1) throw new Error('User not found');
+
+      list[index] = {
+        ...list[index],
+        adminStatus: status,
+        role: status === 'approved' ? 'admin' : list[index].role,
+        isActive: status === 'approved',
+      };
+      saveStoredUsers(list);
+      return list[index];
+    }
+
+    const response = await api.patch(`/users/${id}/admin-status`, { status });
+    return response.data.data;
+  },
+
+  async suspendUser(id: string, reason?: string): Promise<User> {
+    if (isMockMode()) {
+      await new Promise((r) => setTimeout(r, 250));
+      const list = getStoredUsers();
+      const index = list.findIndex((u) => u._id === id);
+      if (index === -1) throw new Error('User not found');
+
+      list[index] = {
+        ...list[index],
+        status: 'suspended',
+        isActive: false,
+        suspensionReason: reason || 'Suspended by administrator',
+      };
+      saveStoredUsers(list);
+      return list[index];
+    }
+
+    const response = await api.patch(`/users/${id}/suspend`, { reason });
+    return response.data.data;
+  },
+
+  async reactivateUser(id: string): Promise<User> {
+    if (isMockMode()) {
+      await new Promise((r) => setTimeout(r, 250));
+      const list = getStoredUsers();
+      const index = list.findIndex((u) => u._id === id);
+      if (index === -1) throw new Error('User not found');
+
+      list[index] = {
+        ...list[index],
+        status: 'active',
+        isActive: true,
+        suspensionReason: '',
+      };
+      saveStoredUsers(list);
+      return list[index];
+    }
+
+    const response = await api.patch(`/users/${id}/reactivate`);
+    return response.data.data;
+  },
 };

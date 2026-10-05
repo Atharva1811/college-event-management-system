@@ -72,6 +72,11 @@ export const AppSidebar: React.FC = () => {
           path: "/admin/events",
         },
         {
+          name: "Venues & Locations",
+          icon: <BoxCubeIcon />,
+          path: "/admin/locations",
+        },
+        {
           name: "Registrations",
           icon: <TableIcon />,
           path: "/admin/registrations",

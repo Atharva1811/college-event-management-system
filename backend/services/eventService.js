@@ -1,5 +1,6 @@
 import Event from '../models/Event.js';
 import Registration from '../models/Registration.js';
+import Location from '../models/Location.js';
 import {
   calculateEventStatus,
   checkVenueConflict,
@@ -7,14 +8,16 @@ import {
   assertCanUpdateEvent,
   assertCanCancelEvent,
   assertCanDeleteEvent,
+  assertLocationCapacity,
 } from '../utils/eventRules.js';
 import { notifyUsers } from './notificationService.js';
 
-export const listEvents = async (query = {}) => {
+export const listEvents = async (query = {}, user = null) => {
   const {
     category,
     status,
     organizer,
+    department,
     search,
     page = 1,
     limit = 10,
@@ -23,6 +26,16 @@ export const listEvents = async (query = {}) => {
   } = query;
 
   const filter = {};
+
+  // Requirement 14: Organizer event queries MUST be restricted server-side.
+  if (user && user.role === 'organizer') {
+    filter.$or = [
+      { department: user.department },
+      { organizer: user._id },
+    ];
+  } else if (department && department !== 'All') {
+    filter.department = department;
+  }
 
   if (category && category !== 'All') {
     filter.category = category;
@@ -33,11 +46,17 @@ export const listEvents = async (query = {}) => {
   }
 
   if (search) {
-    filter.$or = [
+    const searchConditions = [
       { title: { $regex: search, $options: 'i' } },
       { description: { $regex: search, $options: 'i' } },
       { venue: { $regex: search, $options: 'i' } },
     ];
+    if (filter.$or) {
+      filter.$and = [{ $or: filter.$or }, { $or: searchConditions }];
+      delete filter.$or;
+    } else {
+      filter.$or = searchConditions;
+    }
   }
 
   const sortDirection = order === 'desc' ? -1 : 1;
@@ -46,6 +65,7 @@ export const listEvents = async (query = {}) => {
   // Fetch events for calculating real-time dynamic status
   const events = await Event.find(filter)
     .populate('organizer', 'name email department avatar')
+    .populate('location', 'name building floor room capacity accessType department status')
     .sort(sortOption);
 
   // Attach registration counts
@@ -105,7 +125,10 @@ export const listEvents = async (query = {}) => {
 };
 
 export const getEventById = async (id) => {
-  const event = await Event.findById(id).populate('organizer', 'name email department avatar');
+  const event = await Event.findById(id)
+    .populate('organizer', 'name email department avatar')
+    .populate('location', 'name building floor room capacity accessType department status');
+
   if (!event) {
     const error = new Error('Event not found');
     error.statusCode = 404;
@@ -129,15 +152,42 @@ export const getEventById = async (id) => {
   };
 };
 
-export const createEvent = async (eventData, organizerId) => {
+export const createEvent = async (eventData, user) => {
+  // Requirement 15: Derive department from authenticated organizer account
+  if (user.role === 'organizer') {
+    eventData.department = user.department;
+  } else if (!eventData.department) {
+    eventData.department = 'General';
+  }
+
+  // Location validation & capacity verification (Requirements 31, 32, 34)
+  if (eventData.location) {
+    const loc = await Location.findById(eventData.location);
+    if (!loc) {
+      const error = new Error('Selected location was not found.');
+      error.statusCode = 404;
+      throw error;
+    }
+    if (loc.status !== 'active') {
+      const error = new Error('Selected location is currently inactive or awaiting approval.');
+      error.statusCode = 400;
+      throw error;
+    }
+    // Verify event capacity does not exceed location capacity
+    assertLocationCapacity(eventData.capacity, loc.capacity);
+    // Preserve legacy venue string
+    eventData.venue = `${loc.name} (${loc.building}, Rm ${loc.room})`;
+  }
+
   // 1. Validate date & time constraints (not in past, deadline logical)
   validateEventDateTime(eventData);
 
-  // 2. Check venue conflict against existing scheduled events
+  // 2. Check location / venue conflict against existing scheduled events
   await checkVenueConflict({
     date: eventData.date,
     time: eventData.time,
     venue: eventData.venue,
+    locationId: eventData.location,
   });
 
   // 3. Compute initial automatic event status
@@ -146,10 +196,13 @@ export const createEvent = async (eventData, organizerId) => {
   const event = await Event.create({
     ...eventData,
     status: initialStatus,
-    organizer: organizerId,
+    organizer: user._id,
   });
 
-  return event.populate('organizer', 'name email department avatar');
+  return event.populate([
+    { path: 'organizer', select: 'name email department avatar' },
+    { path: 'location', select: 'name building floor room capacity accessType department status' },
+  ]);
 };
 
 export const updateEvent = async (id, updateData, user) => {
@@ -170,6 +223,20 @@ export const updateEvent = async (id, updateData, user) => {
   // Enforcement: Ongoing, Completed, and Cancelled events cannot be edited
   assertCanUpdateEvent(event);
 
+  // Handle Location changes & capacity validation
+  const targetLocationId = updateData.location !== undefined ? updateData.location : event.location;
+  const targetCapacity = updateData.capacity !== undefined ? updateData.capacity : event.capacity;
+
+  if (targetLocationId) {
+    const loc = await Location.findById(targetLocationId);
+    if (loc) {
+      assertLocationCapacity(targetCapacity, loc.capacity);
+      if (updateData.location) {
+        updateData.venue = `${loc.name} (${loc.building}, Rm ${loc.room})`;
+      }
+    }
+  }
+
   // Capacity reduction validation: Cannot reduce capacity below current registered students
   if (updateData.capacity !== undefined) {
     const registeredCount = await Registration.countDocuments({
@@ -184,16 +251,18 @@ export const updateEvent = async (id, updateData, user) => {
     }
   }
 
-  // If date, time, or venue are modified, re-validate and run conflict check
+  // If date, time, location, or venue are modified, re-validate and run conflict check
   const newDate = updateData.date || event.date;
   const newTime = updateData.time || event.time;
   const newVenue = updateData.venue || event.venue;
   const newDeadline = updateData.registrationDeadline || event.registrationDeadline;
+  const newLocation = updateData.location !== undefined ? updateData.location : event.location;
 
   if (
     updateData.date ||
     updateData.time ||
     updateData.venue ||
+    updateData.location ||
     updateData.registrationDeadline
   ) {
     validateEventDateTime({
@@ -206,6 +275,7 @@ export const updateEvent = async (id, updateData, user) => {
       date: newDate,
       time: newTime,
       venue: newVenue,
+      locationId: newLocation,
       excludeEventId: id,
     });
   }
@@ -218,7 +288,11 @@ export const updateEvent = async (id, updateData, user) => {
   }
 
   await event.save();
-  return event.populate('organizer', 'name email department avatar');
+
+  return event.populate([
+    { path: 'organizer', select: 'name email department avatar' },
+    { path: 'location', select: 'name building floor room capacity accessType department status' },
+  ]);
 };
 
 export const cancelEvent = async (id, user) => {

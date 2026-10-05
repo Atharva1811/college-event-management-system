@@ -61,12 +61,41 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    status: {
+      type: String,
+      enum: ['active', 'suspended'],
+      default: 'active',
+    },
+    suspensionReason: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    suspendedAt: {
+      type: Date,
+      default: null,
+    },
+    suspendedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
     organizerStatus: {
       type: String,
       enum: ['pending', 'approved', 'denied'],
       default: 'approved',
     },
     applicationReason: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    adminStatus: {
+      type: String,
+      enum: ['none', 'pending', 'approved', 'denied'],
+      default: 'none',
+    },
+    adminReason: {
       type: String,
       trim: true,
       default: '',

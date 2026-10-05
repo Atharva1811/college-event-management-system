@@ -1,6 +1,6 @@
 import User from '../models/User.js';
 import { isConnected } from '../config/db.js';
-import { assertCanDeleteOrganizer } from '../utils/eventRules.js';
+import { assertCanDeleteOrganizer, handleOrganizerDeletion } from '../utils/eventRules.js';
 import { createNotification } from '../services/notificationService.js';
 
 export const getUsers = async (req, res, next) => {
@@ -208,6 +208,191 @@ export const updateOrganizerStatus = async (req, res, next) => {
   }
 };
 
+export const updateAdminStatus = async (req, res, next) => {
+  try {
+    if (!isConnected()) {
+      return res.status(503).json({
+        success: false,
+        message: 'Database connection is temporarily unavailable.',
+      });
+    }
+
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: Only administrators can review admin applications.',
+      });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found.',
+      });
+    }
+
+    const { status } = req.body;
+    if (!['approved', 'denied'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Status must be either "approved" or "denied".',
+      });
+    }
+
+    user.adminStatus = status;
+    if (status === 'approved') {
+      user.role = 'admin';
+      user.isActive = true;
+      user.status = 'active';
+    } else {
+      user.isActive = false;
+    }
+
+    await user.save();
+
+    await createNotification({
+      recipient: user._id,
+      type: status === 'approved' ? 'admin_approved' : 'admin_denied',
+      title: status === 'approved' ? 'Admin Access Granted' : 'Admin Application Update',
+      message:
+        status === 'approved'
+          ? 'Your administrator application has been approved. You now have full administrative privileges.'
+          : 'Your administrator application was reviewed and denied by the system administrator.',
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Admin application has been ${status}.`,
+      data: user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const suspendUser = async (req, res, next) => {
+  try {
+    if (!isConnected()) {
+      return res.status(503).json({
+        success: false,
+        message: 'Database connection is temporarily unavailable.',
+      });
+    }
+
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: Only administrators can suspend accounts.',
+      });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found.',
+      });
+    }
+
+    // Protection 1: Admin cannot suspend themselves
+    if (user._id.toString() === req.user._id.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Administrators cannot suspend their own account.',
+      });
+    }
+
+    // Protection 2: Cannot suspend the last active administrator
+    if (user.role === 'admin') {
+      const activeAdminCount = await User.countDocuments({
+        role: 'admin',
+        isActive: true,
+        status: { $ne: 'suspended' },
+      });
+      if (activeAdminCount <= 1) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot suspend the last active system administrator.',
+        });
+      }
+    }
+
+    const { reason } = req.body;
+    user.status = 'suspended';
+    user.isActive = false;
+    user.suspensionReason = reason || 'Your account has been suspended by the administrator.';
+    user.suspendedAt = new Date();
+    user.suspendedBy = req.user._id;
+
+    await user.save();
+
+    await createNotification({
+      recipient: user._id,
+      type: 'account_suspended',
+      title: 'Account Suspended',
+      message: user.suspensionReason,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Account for ${user.name} has been suspended.`,
+      data: user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const reactivateUser = async (req, res, next) => {
+  try {
+    if (!isConnected()) {
+      return res.status(503).json({
+        success: false,
+        message: 'Database connection is temporarily unavailable.',
+      });
+    }
+
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: Only administrators can reactivate accounts.',
+      });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found.',
+      });
+    }
+
+    user.status = 'active';
+    user.isActive = true;
+    user.suspensionReason = '';
+    user.suspendedAt = null;
+    user.suspendedBy = null;
+
+    await user.save();
+
+    await createNotification({
+      recipient: user._id,
+      type: 'account_reactivated',
+      title: 'Account Reactivated',
+      message: 'Your account has been reactivated by the administrator. You may now log in.',
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Account for ${user.name} has been reactivated.`,
+      data: user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const deleteUser = async (req, res, next) => {
   try {
     if (!isConnected()) {
@@ -239,9 +424,24 @@ export const deleteUser = async (req, res, next) => {
       });
     }
 
-    // Constraint: Organizer cannot be deleted while they have an ongoing event
+    // Protection: Cannot delete the last active administrator
+    if (user.role === 'admin') {
+      const activeAdminCount = await User.countDocuments({
+        role: 'admin',
+        isActive: true,
+        status: { $ne: 'suspended' },
+      });
+      if (activeAdminCount <= 1) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot delete the last active system administrator.',
+        });
+      }
+    }
+
+    // Requirements 23-27: Organizer ongoing event block & upcoming event reassignment
     if (user.role === 'organizer') {
-      await assertCanDeleteOrganizer(user._id);
+      await handleOrganizerDeletion(user);
     }
 
     await User.findByIdAndDelete(req.params.id);

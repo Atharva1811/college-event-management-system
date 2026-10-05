@@ -7,6 +7,7 @@ import Input from '../../components/form/input/InputField';
 import Button from '../../components/ui/button/Button';
 import DatePicker from '../../components/form/DatePicker';
 import TimePicker from '../../components/form/TimePicker';
+import LocationSelector from '../../components/events/LocationSelector';
 import { parseTimeRange, formatTimeRange } from '../../utils/dateTimeUtils';
 import { calculateEventStatus } from '../../utils/eventRules';
 import { EventCategory, EventStatus } from '../../types';
@@ -30,6 +31,8 @@ export default function OrganizerEditEvent() {
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [venue, setVenue] = useState('');
+  const [locationId, setLocationId] = useState('');
+  const [locationCapacity, setLocationCapacity] = useState<number>(0);
   const [capacity, setCapacity] = useState('');
   const [registeredCount, setRegisteredCount] = useState(0);
   const [status, setStatus] = useState<EventStatus>('upcoming');
@@ -57,6 +60,11 @@ export default function OrganizerEditEvent() {
       setEndTime(parsedTimes.endTime || '04:00 PM');
 
       setVenue(ev.venue);
+      const locId = typeof ev.location === 'object' && ev.location ? ev.location._id : ((ev.location as string) || '');
+      setLocationId(locId);
+      if (typeof ev.location === 'object' && ev.location?.capacity) {
+        setLocationCapacity(ev.location.capacity);
+      }
       setCapacity(String(ev.capacity));
       setRegisteredCount(ev.registeredCount || 0);
 
@@ -146,6 +154,11 @@ export default function OrganizerEditEvent() {
       return;
     }
 
+    if (locationCapacity > 0 && capNum > locationCapacity) {
+      setError(`Target event capacity (${capNum}) cannot exceed the approved location capacity (${locationCapacity} seats).`);
+      return;
+    }
+
     const combinedTime = formatTimeRange(startTime, endTime);
 
     setSaving(true);
@@ -157,6 +170,7 @@ export default function OrganizerEditEvent() {
         date: new Date(date).toISOString(),
         time: combinedTime,
         venue: venue.trim(),
+        location: locationId || undefined,
         capacity: capNum,
         status,
         registrationDeadline: registrationDeadline
@@ -339,13 +353,16 @@ export default function OrganizerEditEvent() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <Label>Venue <span className="text-error-500">*</span></Label>
-              <Input
-                type="text"
-                value={venue}
+              <LocationSelector
+                value={locationId}
+                venueText={venue}
                 disabled={!isEditable}
-                onChange={(e) => setVenue(e.target.value)}
-                required
+                eventCapacity={capacity}
+                onChange={(locId, venueStr, locCap) => {
+                  setLocationId(locId);
+                  setVenue(venueStr);
+                  setLocationCapacity(locCap);
+                }}
               />
             </div>
 

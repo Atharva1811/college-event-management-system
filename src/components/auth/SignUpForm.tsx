@@ -7,6 +7,7 @@ import Checkbox from "../form/input/Checkbox";
 import Button from "../ui/button/Button";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
+import { authService } from "../../services/authService";
 import { Department } from "../../types";
 
 const departments: Department[] = [
@@ -22,10 +23,12 @@ const departments: Department[] = [
 
 export default function SignUpForm() {
   const [showPassword, setShowPassword] = useState(false);
+  const [accountType, setAccountType] = useState<"student" | "organizer" | "admin">("student");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [department, setDepartment] = useState<Department>("Computer Science");
+  const [applicationReason, setApplicationReason] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [agreeTerms, setAgreeTerms] = useState(true);
@@ -57,17 +60,40 @@ export default function SignUpForm() {
 
     setLoading(true);
     try {
-      const user = await register({
-        name,
-        email,
-        password,
-        phone,
-        department,
-        role: "student", // Enforced student registration
-      });
-
-      showToast(`Account created! Welcome, ${user.name}!`, "success");
-      navigate("/student/dashboard", { replace: true });
+      if (accountType === "student") {
+        const user = await register({
+          name,
+          email,
+          password,
+          phone,
+          department,
+          role: "student",
+        });
+        showToast(`Account created! Welcome, ${user.name}!`, "success");
+        navigate("/student/dashboard", { replace: true });
+      } else if (accountType === "organizer") {
+        const res = await authService.applyOrganizer({
+          name,
+          email,
+          password,
+          phone,
+          department,
+          reason: applicationReason,
+        });
+        showToast(res.message || "Organizer application submitted for administrative review.", "success");
+        navigate("/signin", { replace: true });
+      } else {
+        const res = await authService.applyAdmin({
+          name,
+          email,
+          password,
+          phone,
+          department,
+          reason: applicationReason,
+        });
+        showToast(res.message || "Administrator application submitted for review.", "success");
+        navigate("/signin", { replace: true });
+      }
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
       const message =
@@ -119,6 +145,51 @@ export default function SignUpForm() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Account Type Selector (Requirement 7) */}
+          <div>
+            <Label>Account Type</Label>
+            <div className="grid grid-cols-3 gap-2 mt-1">
+              <button
+                type="button"
+                onClick={() => setAccountType("student")}
+                className={`py-2 px-2 rounded-xl border text-xs font-bold transition-all text-center cursor-pointer ${
+                  accountType === "student"
+                    ? "border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300 shadow-sm"
+                    : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+                }`}
+              >
+                🎓 Student
+              </button>
+              <button
+                type="button"
+                onClick={() => setAccountType("organizer")}
+                className={`py-2 px-2 rounded-xl border text-xs font-bold transition-all text-center cursor-pointer ${
+                  accountType === "organizer"
+                    ? "border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300 shadow-sm"
+                    : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+                }`}
+              >
+                📋 Organizer
+              </button>
+              <button
+                type="button"
+                onClick={() => setAccountType("admin")}
+                className={`py-2 px-2 rounded-xl border text-xs font-bold transition-all text-center cursor-pointer ${
+                  accountType === "admin"
+                    ? "border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300 shadow-sm"
+                    : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+                }`}
+              >
+                🛡️ Admin
+              </button>
+            </div>
+            {accountType !== "student" && (
+              <p className="mt-1.5 text-[11px] text-amber-600 dark:text-amber-400">
+                ℹ️ {accountType === "organizer" ? "Faculty Organizer" : "Administrator"} applications require review and approval by an active system administrator before privileged access is activated.
+              </p>
+            )}
+          </div>
+
           <div>
             <Label>
               Full Name <span className="text-error-500">*</span>
@@ -131,6 +202,22 @@ export default function SignUpForm() {
               required
             />
           </div>
+
+          {accountType !== "student" && (
+            <div>
+              <Label>
+                Application Statement / Purpose <span className="text-error-500">*</span>
+              </Label>
+              <textarea
+                rows={2}
+                required
+                value={applicationReason}
+                onChange={(e) => setApplicationReason(e.target.value)}
+                placeholder="Detail your department responsibilities or reasons for requesting privileged access..."
+                className="w-full p-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-transparent text-xs focus:border-brand-500 focus:outline-none dark:text-white"
+              />
+            </div>
+          )}
 
           <div>
             <Label>
@@ -225,10 +312,16 @@ export default function SignUpForm() {
 
           <div className="pt-2">
             <Button
-              className="w-full py-3 text-sm font-bold shadow-lg shadow-brand-500/20"
+              className="w-full py-3 text-sm font-bold shadow-lg shadow-brand-500/20 cursor-pointer"
               disabled={loading}
             >
-              {loading ? "Creating Account..." : "Complete Registration"}
+              {loading
+                ? "Processing Request..."
+                : accountType === "student"
+                ? "Create Student Account"
+                : accountType === "organizer"
+                ? "Submit Organizer Application"
+                : "Submit Administrator Application"}
             </Button>
           </div>
         </form>

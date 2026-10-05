@@ -18,7 +18,7 @@ const departments: Department[] = [
 ];
 
 export default function ProfilePage() {
-  const { currentUser, updateProfile } = useAuth();
+  const { currentUser, updateProfile, applyOrganizerUpgrade } = useAuth();
   const { showToast } = useToast();
 
   const [name, setName] = useState(currentUser?.name || '');
@@ -34,6 +34,33 @@ export default function ProfilePage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
+
+  // Organizer upgrade fields (Requirement 8)
+  const [upgradeDept, setUpgradeDept] = useState<Department>(currentUser?.department || 'Computer Science');
+  const [upgradeReason, setUpgradeReason] = useState('');
+  const [submittingUpgrade, setSubmittingUpgrade] = useState(false);
+
+  const handleApplyOrganizer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!upgradeReason.trim()) {
+      showToast('Please state your purpose / role for requesting organizer privileges.', 'error');
+      return;
+    }
+    setSubmittingUpgrade(true);
+    try {
+      const res = await applyOrganizerUpgrade({
+        department: upgradeDept,
+        reason: upgradeReason.trim(),
+      });
+      showToast(res.message || 'Organizer application submitted for review!', 'success');
+      setUpgradeReason('');
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      showToast(errorObj.response?.data?.message || errorObj.message || 'Upgrade request failed', 'error');
+    } finally {
+      setSubmittingUpgrade(false);
+    }
+  };
 
   const handleUpdateProfile = (e: React.FormEvent) => {
     e.preventDefault();
@@ -238,6 +265,88 @@ export default function ProfilePage() {
               </div>
             </form>
           </div>
+
+          {/* Requirement 8: Student Organizer Upgrade Application */}
+          {currentUser?.role === 'student' && (
+            <div className="p-6 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200/80 dark:border-gray-700/60 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-bold text-gray-900 dark:text-white">
+                    Apply to Become a Campus Event Organizer
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    Upgrade this account to host and manage events for your academic department. Your registered events and history will remain intact.
+                  </p>
+                </div>
+                <span className="text-2xl">📋</span>
+              </div>
+
+              {currentUser.organizerStatus === 'pending' ? (
+                <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 text-amber-700 dark:text-amber-400 text-xs">
+                  <div className="font-bold flex items-center gap-1.5 mb-1">
+                    <span>⏳</span>
+                    <span>Application Under Review</span>
+                  </div>
+                  <p>
+                    Your request to become an organizer for <strong>{currentUser.department}</strong> is currently pending administrative review. You will receive a notification once an administrator reviews it.
+                  </p>
+                </div>
+              ) : (
+                <form onSubmit={handleApplyOrganizer} className="space-y-4 pt-1">
+                  {currentUser.organizerStatus === 'denied' && (
+                    <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 text-rose-700 dark:text-rose-400 text-xs">
+                      Your previous organizer request was not approved. You may submit an updated application statement below.
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Affiliated Department</Label>
+                      <select
+                        value={upgradeDept}
+                        onChange={(e) => setUpgradeDept(e.target.value as Department)}
+                        className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2 text-xs text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                      >
+                        {departments.map((dept) => (
+                          <option key={dept} value={dept} className="dark:bg-gray-800">
+                            {dept}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <Label>Applicant Status</Label>
+                      <div className="h-11 flex items-center px-3.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-xs text-gray-500 font-medium">
+                        Student Account ({currentUser.email})
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label>Application Purpose & Club / Department Responsibilities *</Label>
+                    <textarea
+                      rows={3}
+                      required
+                      value={upgradeReason}
+                      onChange={(e) => setUpgradeReason(e.target.value)}
+                      placeholder="Outline which department events, tech fests, or campus activities you plan to coordinate..."
+                      className="w-full p-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-transparent text-xs focus:border-brand-500 focus:outline-none dark:text-white"
+                    />
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button
+                      disabled={submittingUpgrade}
+                      className="px-6 py-2.5 text-xs font-bold shadow-md shadow-brand-500/20 cursor-pointer"
+                    >
+                      {submittingUpgrade ? 'Submitting Application...' : 'Submit Organizer Request'}
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -1,4 +1,6 @@
 import Event from '../models/Event.js';
+import User from '../models/User.js';
+import { createNotification, notifyAdmins } from '../services/notificationService.js';
 
 /**
  * Parses a combined time string into separate startTime and endTime.
@@ -157,12 +159,22 @@ export function validateEventDateTime({ date, time, registrationDeadline }) {
 }
 
 /**
- * Checks venue conflict against MongoDB Event collection:
- * Same date + same time + same venue -> Conflict!
- * Different venue -> Allowed
+ * Asserts event capacity does not exceed approved location capacity.
+ */
+export function assertLocationCapacity(eventCapacity, locationCapacity) {
+  if (locationCapacity && Number(eventCapacity) > Number(locationCapacity)) {
+    const error = new Error(`Event capacity (${eventCapacity}) cannot exceed location capacity of ${locationCapacity}.`);
+    error.statusCode = 400;
+    throw error;
+  }
+}
+
+/**
+ * Checks location and venue conflict against MongoDB Event collection:
+ * Same date + overlapping time + same location (or venue) -> Conflict (409)!
  * Cancelled events -> Ignored
  */
-export async function checkVenueConflict({ date, time, venue, excludeEventId }) {
+export async function checkVenueConflict({ date, time, venue, locationId, excludeEventId }) {
   const targetDate = new Date(date);
   const startOfDay = new Date(targetDate);
   startOfDay.setHours(0, 0, 0, 0);
@@ -181,13 +193,21 @@ export async function checkVenueConflict({ date, time, venue, excludeEventId }) 
 
   // Find events on the same calendar day
   const sameDayEvents = await Event.find(query);
-
-  const normalizedVenue = venue.trim().toLowerCase();
+  const normalizedVenue = venue ? venue.trim().toLowerCase() : '';
 
   for (const ev of sameDayEvents) {
-    if (ev.venue.trim().toLowerCase() === normalizedVenue) {
+    let sameLocation = false;
+
+    // Check location ObjectId reference match
+    if (locationId && ev.location) {
+      sameLocation = ev.location.toString() === locationId.toString();
+    } else if (normalizedVenue && ev.venue) {
+      sameLocation = ev.venue.trim().toLowerCase() === normalizedVenue;
+    }
+
+    if (sameLocation) {
       if (timesOverlap(time, ev.time)) {
-        const error = new Error('An event is already scheduled at this venue for the selected date and time.');
+        const error = new Error('A non-cancelled event is already scheduled at this location/venue for the selected date and time.');
         error.statusCode = 409;
         throw error;
       }
@@ -313,9 +333,97 @@ export async function assertCanDeleteOrganizer(organizerId) {
   for (const ev of events) {
     const status = calculateEventStatus(ev);
     if (status === 'ongoing') {
-      const error = new Error('Organizer cannot be deleted while they have an ongoing event.');
+      const error = new Error('Organizer cannot be deleted because they are currently hosting an ongoing event.');
       error.statusCode = 400;
       throw error;
     }
+  }
+}
+
+/**
+ * Handles organizer deletion with deterministic upcoming event reassignment:
+ * - Ongoing events: BLOCKS deletion.
+ * - Upcoming events: Finds eligible replacement in same department (active, non-suspended, fewest upcoming events).
+ *   If no replacement: BLOCKS deletion with clear message.
+ *   If replacement found: reassigns upcoming events and notifies replacement organizer and Admin.
+ * - Historical events (completed/cancelled): retained as-is without rewriting history.
+ */
+export async function handleOrganizerDeletion(organizerUser) {
+  const organizerId = organizerUser._id;
+  const events = await Event.find({ organizer: organizerId });
+
+  // 1. Block if ANY event is ongoing
+  for (const ev of events) {
+    const status = calculateEventStatus(ev);
+    if (status === 'ongoing') {
+      const error = new Error('Organizer cannot be deleted because they are currently hosting an ongoing event.');
+      error.statusCode = 400;
+      throw error;
+    }
+  }
+
+  // 2. Identify upcoming events that require reassignment
+  const upcomingEvents = events.filter((ev) => calculateEventStatus(ev) === 'upcoming');
+
+  if (upcomingEvents.length > 0) {
+    // Find eligible replacements in the same department
+    const candidates = await User.find({
+      _id: { $ne: organizerId },
+      role: 'organizer',
+      department: organizerUser.department,
+      isActive: true,
+      status: { $ne: 'suspended' },
+      organizerStatus: 'approved',
+    });
+
+    if (candidates.length === 0) {
+      const error = new Error(
+        `Organizer cannot be deleted because their upcoming events have no eligible replacement organizer in the same department (${organizerUser.department}).`
+      );
+      error.statusCode = 400;
+      throw error;
+    }
+
+    // Workload calculation: count upcoming events for each candidate
+    const candidateWorkload = {};
+    for (const c of candidates) {
+      const cEvents = await Event.find({ organizer: c._id });
+      const upCount = cEvents.filter((e) => calculateEventStatus(e) === 'upcoming').length;
+      candidateWorkload[c._id.toString()] = upCount;
+    }
+
+    // Deterministically reassign each upcoming event to candidate with lowest workload
+    for (const ev of upcomingEvents) {
+      candidates.sort((a, b) => {
+        const countA = candidateWorkload[a._id.toString()] || 0;
+        const countB = candidateWorkload[b._id.toString()] || 0;
+        if (countA !== countB) return countA - countB;
+        return a._id.toString().localeCompare(b._id.toString());
+      });
+
+      const chosenCandidate = candidates[0];
+      ev.organizer = chosenCandidate._id;
+      await ev.save();
+
+      candidateWorkload[chosenCandidate._id.toString()] =
+        (candidateWorkload[chosenCandidate._id.toString()] || 0) + 1;
+
+      // Notify replacement organizer
+      await createNotification({
+        recipient: chosenCandidate._id,
+        type: 'event_reassigned',
+        title: 'Event Reassigned to You',
+        message: `The upcoming event "${ev.title}" previously organized by ${organizerUser.name} has been reassigned to you.`,
+        relatedEvent: ev._id,
+      });
+    }
+
+    // Notify administrators of reassignment
+    await notifyAdmins({
+      type: 'event_reassigned',
+      title: 'Upcoming Events Reassigned',
+      message: `${upcomingEvents.length} upcoming event(s) previously organized by ${organizerUser.name} (${organizerUser.department}) have been safely reassigned following organizer deletion.`,
+      relatedEvent: null,
+    });
   }
 }

@@ -55,17 +55,26 @@ export default function AdminStudents() {
     loadStudents();
   }, [loadStudents]);
 
-  const handleToggleStatus = async (user: User) => {
-    const newStatus = !user.isActive;
+  const handleSuspend = async (user: User) => {
+    const reason = window.prompt(`Enter suspension reason for student "${user.name}":`, 'Violation of university event conduct policy');
+    if (reason === null) return;
     try {
-      await userService.toggleUserStatus(user._id, newStatus);
-      showToast(
-        `Student "${user.name}" ${newStatus ? 'activated' : 'deactivated'}.`,
-        'success'
-      );
+      await userService.suspendUser(user._id, reason);
+      showToast(`Student "${user.name}" has been suspended.`, 'success');
       await loadStudents();
     } catch (err: any) {
-      showToast(err.message || 'Status toggle failed', 'error');
+      showToast(err.message || 'Suspension failed', 'error');
+    }
+  };
+
+  const handleReactivate = async (user: User) => {
+    if (!window.confirm(`Reactivate account for student "${user.name}"?`)) return;
+    try {
+      await userService.reactivateUser(user._id);
+      showToast(`Student "${user.name}" account reactivated.`, 'success');
+      await loadStudents();
+    } catch (err: any) {
+      showToast(err.message || 'Reactivation failed', 'error');
     }
   };
 
@@ -260,12 +269,14 @@ export default function AdminStudents() {
                     <td className="py-3.5 px-4">
                       <span
                         className={`inline-block px-2.5 py-0.5 text-[11px] font-bold uppercase rounded-md ${
-                          student.isActive
+                          student.status === 'suspended'
+                            ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400'
+                            : student.isActive
                             ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
-                            : 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400'
+                            : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
                         }`}
                       >
-                        {student.isActive ? 'Active' : 'Inactive'}
+                        {student.status === 'suspended' ? 'Suspended' : student.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </td>
                     <td className="py-3.5 px-4 text-xs text-gray-400">
@@ -280,14 +291,21 @@ export default function AdminStudents() {
                       >
                         Edit
                       </button>
-                      <button
-                        onClick={() => handleToggleStatus(student)}
-                        className={`text-xs font-bold cursor-pointer hover:underline ${
-                          student.isActive ? 'text-amber-600' : 'text-emerald-600'
-                        }`}
-                      >
-                        {student.isActive ? 'Deactivate' : 'Activate'}
-                      </button>
+                      {student.status === 'suspended' ? (
+                        <button
+                          onClick={() => handleReactivate(student)}
+                          className="text-xs font-bold text-emerald-600 hover:underline cursor-pointer"
+                        >
+                          Reactivate
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleSuspend(student)}
+                          className="text-xs font-bold text-amber-600 hover:underline cursor-pointer"
+                        >
+                          Suspend
+                        </button>
+                      )}
                       <button
                         onClick={() => handleDelete(student)}
                         className="text-xs font-bold text-rose-600 hover:underline cursor-pointer"

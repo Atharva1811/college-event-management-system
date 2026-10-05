@@ -67,7 +67,12 @@ export const getStudentAnalytics = async (req, res, next) => {
       }),
     ]);
 
-    const upcomingEvents = await Event.countDocuments({ status: 'upcoming' });
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const upcomingEvents = await Event.countDocuments({
+      date: { $gte: startOfToday },
+      status: { $ne: 'cancelled' },
+    });
 
     res.status(200).json({
       success: true,

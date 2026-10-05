@@ -7,6 +7,7 @@ import Input from '../../components/form/input/InputField';
 import Button from '../../components/ui/button/Button';
 import DatePicker from '../../components/form/DatePicker';
 import TimePicker from '../../components/form/TimePicker';
+import LocationSelector from '../../components/events/LocationSelector';
 import { formatTimeRange } from '../../utils/dateTimeUtils';
 import { EventCategory } from '../../types';
 
@@ -27,7 +28,9 @@ export default function OrganizerCreateEvent() {
   const [date, setDate] = useState('2026-11-25');
   const [startTime, setStartTime] = useState('10:00 AM');
   const [endTime, setEndTime] = useState('04:00 PM');
-  const [venue, setVenue] = useState('Computer Science Seminar Complex');
+  const [venue, setVenue] = useState('');
+  const [locationId, setLocationId] = useState('');
+  const [locationCapacity, setLocationCapacity] = useState<number>(0);
   const [capacity, setCapacity] = useState('60');
   const [registrationDeadline, setRegistrationDeadline] = useState('2026-11-22');
   const [image, setImage] = useState(
@@ -59,16 +62,21 @@ export default function OrganizerCreateEvent() {
       return;
     }
 
-    // 3. Venue validation
-    if (venue.trim().length < 2) {
-      setError('Venue must be at least 2 characters long.');
+    // 3. Location / Venue validation
+    if (!venue || venue.trim().length < 2) {
+      setError('Please select an approved campus location/venue.');
       return;
     }
 
-    // 4. Capacity validation: positive whole number
+    // 4. Capacity validation: positive whole number and location limit
     const capNum = Number(capacity);
     if (!Number.isInteger(capNum) || capNum <= 0) {
       setError('Capacity must be a positive whole number.');
+      return;
+    }
+
+    if (locationCapacity > 0 && capNum > locationCapacity) {
+      setError(`Target event capacity (${capNum}) cannot exceed the approved location capacity (${locationCapacity} seats).`);
       return;
     }
 
@@ -124,6 +132,7 @@ export default function OrganizerCreateEvent() {
         date: new Date(date).toISOString(),
         time: combinedTime,
         venue: venue.trim(),
+        location: locationId || undefined,
         capacity: capNum,
         registrationDeadline: new Date(registrationDeadline).toISOString(),
         image: image.trim(),
@@ -271,13 +280,15 @@ export default function OrganizerCreateEvent() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <Label>Campus Venue <span className="text-error-500">*</span></Label>
-              <Input
-                type="text"
-                placeholder="Auditorium Hall A or Lab 4"
-                value={venue}
-                onChange={(e) => setVenue(e.target.value)}
-                required
+              <LocationSelector
+                value={locationId}
+                venueText={venue}
+                eventCapacity={capacity}
+                onChange={(locId, venueStr, locCap) => {
+                  setLocationId(locId);
+                  setVenue(venueStr);
+                  setLocationCapacity(locCap);
+                }}
               />
             </div>
 

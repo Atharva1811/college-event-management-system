@@ -34,8 +34,31 @@ export interface User {
   department?: Department;
   avatar?: string;
   isActive: boolean;
+  status?: 'active' | 'suspended';
+  suspensionReason?: string;
+  suspendedAt?: string;
   organizerStatus?: 'pending' | 'approved' | 'denied';
   applicationReason?: string;
+  adminStatus?: 'none' | 'pending' | 'approved' | 'denied';
+  adminReason?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface Location {
+  _id: string;
+  name: string;
+  building: string;
+  floor?: string;
+  room: string;
+  description?: string;
+  capacity: number;
+  status: 'active' | 'inactive' | 'pending' | 'denied';
+  accessType: 'global' | 'department';
+  department: Department;
+  createdBy: User | string;
+  approvedBy?: User | string;
+  approvedAt?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -43,7 +66,23 @@ export interface User {
 export interface AppNotification {
   _id: string;
   recipient: string | User;
-  type: 'event_cancelled' | 'event_deleted' | 'event_status' | 'organizer_application' | 'organizer_approved' | 'organizer_denied' | 'general';
+  type:
+    | 'event_cancelled'
+    | 'event_deleted'
+    | 'event_status'
+    | 'event_reassigned'
+    | 'organizer_application'
+    | 'organizer_approved'
+    | 'organizer_denied'
+    | 'admin_application'
+    | 'admin_approved'
+    | 'admin_denied'
+    | 'location_request'
+    | 'location_approved'
+    | 'location_denied'
+    | 'account_suspended'
+    | 'account_reactivated'
+    | 'general';
   title: string;
   message: string;
   relatedEvent?: string | Event;
@@ -64,6 +103,8 @@ export interface Event {
   date: string; // ISO string
   time: string;
   venue: string;
+  location?: Location | string;
+  department?: Department;
   organizer: User | string;
   capacity: number;
   status: EventStatus;
