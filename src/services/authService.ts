@@ -21,6 +21,15 @@ export const authService = {
         throw new Error('This account is deactivated. Please contact support.');
       }
 
+      if (foundUser.role === 'organizer') {
+        if (foundUser.organizerStatus === 'pending') {
+          throw new Error('Your organizer application is currently pending admin approval.');
+        }
+        if (foundUser.organizerStatus === 'denied') {
+          throw new Error('Your organizer application has been denied.');
+        }
+      }
+
       const token = `mock_jwt_token_${foundUser._id}_${Date.now()}`;
       localStorage.setItem('cems_token', token);
       localStorage.setItem('cems_user', JSON.stringify(foundUser));
@@ -33,6 +42,71 @@ export const authService = {
     localStorage.setItem('cems_token', token);
     localStorage.setItem('cems_user', JSON.stringify(user));
     return { user, token };
+  },
+
+  async applyOrganizer(applicationData: {
+    name: string;
+    email: string;
+    password?: string;
+    phone?: string;
+    department?: string;
+    reason?: string;
+  }): Promise<{ user: User; message: string }> {
+    if (isMockMode()) {
+      await new Promise((res) => setTimeout(res, 500));
+      const normalizedEmail = applicationData.email.toLowerCase().trim();
+      const existing = mockUsers.find(
+        (u) => u.email.toLowerCase() === normalizedEmail
+      );
+      if (existing) {
+        throw new Error('A user with this email address already exists.');
+      }
+
+      const newUser: User = {
+        _id: `org_app_${Date.now()}`,
+        name: applicationData.name,
+        email: normalizedEmail,
+        role: 'organizer',
+        phone: applicationData.phone || '',
+        department: (applicationData.department as User['department']) || 'Computer Science',
+        avatar: `https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150`,
+        isActive: true,
+        organizerStatus: 'pending',
+        applicationReason: applicationData.reason || '',
+        createdAt: new Date().toISOString(),
+      };
+
+      mockUsers.push(newUser);
+      return {
+        user: newUser,
+        message: 'Organizer application submitted successfully. It is pending admin review.',
+      };
+    }
+
+    const response = await api.post('/auth/apply-organizer', applicationData);
+    return response.data;
+  },
+
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    if (isMockMode()) {
+      await new Promise((res) => setTimeout(res, 400));
+      return {
+        message: 'If an account exists for that email, recovery instructions have been sent.',
+      };
+    }
+
+    const response = await api.post('/auth/forgot-password', { email });
+    return response.data;
+  },
+
+  async resetPassword(token: string, password: string): Promise<{ message: string }> {
+    if (isMockMode()) {
+      await new Promise((res) => setTimeout(res, 400));
+      return { message: 'Password has been reset successfully. You can now sign in.' };
+    }
+
+    const response = await api.post(`/auth/reset-password/${token}`, { password });
+    return response.data;
   },
 
   async register(userData: {

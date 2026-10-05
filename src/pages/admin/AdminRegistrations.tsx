@@ -3,6 +3,7 @@ import { registrationService } from '../../services/registrationService';
 import { eventService } from '../../services/eventService';
 import { useToast } from '../../context/ToastContext';
 import { Registration, Event, Department } from '../../types';
+import DatePicker from '../../components/form/DatePicker';
 
 const departments: Array<Department | 'All'> = [
   'All',
@@ -25,6 +26,8 @@ export default function AdminRegistrations() {
   const [selectedDept, setSelectedDept] = useState<string>('All');
   const [selectedAttendance, setSelectedAttendance] = useState<string>('All');
   const [selectedStatus, setSelectedStatus] = useState<string>('All');
+  const [fromDate, setFromDate] = useState<string>('');
+  const [toDate, setToDate] = useState<string>('');
 
   const { showToast } = useToast();
 
@@ -58,6 +61,15 @@ export default function AdminRegistrations() {
     if (selectedAttendance !== 'All' && reg.attendance !== selectedAttendance) return false;
     if (selectedStatus !== 'All' && reg.status !== selectedStatus) return false;
 
+    if (fromDate) {
+      const regDate = new Date(reg.registeredAt).toISOString().split('T')[0];
+      if (regDate < fromDate) return false;
+    }
+    if (toDate) {
+      const regDate = new Date(reg.registeredAt).toISOString().split('T')[0];
+      if (regDate > toDate) return false;
+    }
+
     return true;
   });
 
@@ -78,63 +90,99 @@ export default function AdminRegistrations() {
       </div>
 
       {/* Filter Row */}
-      <div className="p-4 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200/80 dark:border-gray-700/60 shadow-sm grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-        <div>
-          <label className="block text-gray-400 font-semibold mb-1">Filter by Event</label>
-          <select
-            value={selectedEventId}
-            onChange={(e) => setSelectedEventId(e.target.value)}
-            className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900 focus:outline-none"
-          >
-            <option value="All">All Events</option>
-            {events.map((e) => (
-              <option key={e._id} value={e._id}>
-                {e.title}
-              </option>
-            ))}
-          </select>
+      <div className="p-4 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200/80 dark:border-gray-700/60 shadow-sm space-y-3 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div>
+            <label className="block text-gray-400 font-semibold mb-1">Filter by Event</label>
+            <select
+              value={selectedEventId}
+              onChange={(e) => setSelectedEventId(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900 focus:outline-none"
+            >
+              <option value="All">All Events</option>
+              {events.map((e) => (
+                <option key={e._id} value={e._id}>
+                  {e.title}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-gray-400 font-semibold mb-1">Filter by Department</label>
+            <select
+              value={selectedDept}
+              onChange={(e) => setSelectedDept(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900 focus:outline-none"
+            >
+              {departments.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-gray-400 font-semibold mb-1">Attendance Status</label>
+            <select
+              value={selectedAttendance}
+              onChange={(e) => setSelectedAttendance(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900 focus:outline-none"
+            >
+              <option value="All">All Statuses</option>
+              <option value="present">Present</option>
+              <option value="absent">Absent</option>
+              <option value="pending">Pending</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-gray-400 font-semibold mb-1">Registration Status</label>
+            <select
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900 focus:outline-none"
+            >
+              <option value="All">All States</option>
+              <option value="registered">Active (registered)</option>
+              <option value="cancelled">Soft-Cancelled</option>
+            </select>
+          </div>
         </div>
 
-        <div>
-          <label className="block text-gray-400 font-semibold mb-1">Filter by Department</label>
-          <select
-            value={selectedDept}
-            onChange={(e) => setSelectedDept(e.target.value)}
-            className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900 focus:outline-none"
-          >
-            {departments.map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-gray-400 font-semibold mb-1">Attendance Status</label>
-          <select
-            value={selectedAttendance}
-            onChange={(e) => setSelectedAttendance(e.target.value)}
-            className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900 focus:outline-none"
-          >
-            <option value="All">All Statuses</option>
-            <option value="present">Present</option>
-            <option value="absent">Absent</option>
-            <option value="pending">Pending</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-gray-400 font-semibold mb-1">Registration Status</label>
-          <select
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-            className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900 focus:outline-none"
-          >
-            <option value="All">All States</option>
-            <option value="registered">Active (registered)</option>
-            <option value="cancelled">Soft-Cancelled</option>
-          </select>
+        {/* Date Filter Row with DatePicker Calendar */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-2 border-t border-gray-100 dark:border-gray-700/60">
+          <div>
+            <label className="block text-[11px] font-bold text-gray-500 mb-1">Registered From (Calendar)</label>
+            <DatePicker
+              value={fromDate}
+              onChange={(val) => setFromDate(val)}
+              placeholder="Filter registered from..."
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] font-bold text-gray-500 mb-1">Registered To (Calendar)</label>
+            <DatePicker
+              value={toDate}
+              minDate={fromDate || undefined}
+              onChange={(val) => setToDate(val)}
+              placeholder="Filter registered to..."
+            />
+          </div>
+          {(fromDate || toDate) && (
+            <div className="flex items-end pb-1">
+              <button
+                onClick={() => {
+                  setFromDate('');
+                  setToDate('');
+                }}
+                className="text-xs text-rose-500 hover:text-rose-700 font-semibold cursor-pointer underline"
+              >
+                Clear Date Filters
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

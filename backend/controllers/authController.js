@@ -31,6 +31,35 @@ export const register = async (req, res, next) => {
   }
 };
 
+export const applyOrganizer = async (req, res, next) => {
+  try {
+    if (!isConnected()) {
+      return res.status(503).json({
+        success: false,
+        message: 'Database is not connected. Please verify MongoDB connection.',
+      });
+    }
+
+    const { name, email, password, phone, department, reason } = req.body;
+    const result = await authService.applyOrganizer({
+      name,
+      email,
+      password,
+      phone,
+      department,
+      reason,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: result.message,
+      data: result.applicant,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const login = async (req, res, next) => {
   try {
     if (!isConnected()) {
@@ -74,6 +103,49 @@ export const getMe = async (req, res, next) => {
       success: true,
       data: user,
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const forgotPassword = async (req, res, next) => {
+  try {
+    if (!isConnected()) {
+      return res.status(503).json({
+        success: false,
+        message: 'Database is not connected. Please verify MongoDB connection.',
+      });
+    }
+
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email address is required.',
+      });
+    }
+
+    const result = await authService.forgotPassword(email);
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const resetPassword = async (req, res, next) => {
+  try {
+    if (!isConnected()) {
+      return res.status(503).json({
+        success: false,
+        message: 'Database is not connected. Please verify MongoDB connection.',
+      });
+    }
+
+    const { token } = req.params;
+    const { password } = req.body;
+
+    const result = await authService.resetPassword(token, password);
+    res.status(200).json(result);
   } catch (error) {
     next(error);
   }

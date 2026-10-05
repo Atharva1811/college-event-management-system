@@ -5,6 +5,10 @@ import { useToast } from '../../context/ToastContext';
 import Label from '../../components/form/Label';
 import Input from '../../components/form/input/InputField';
 import Button from '../../components/ui/button/Button';
+import DatePicker from '../../components/form/DatePicker';
+import TimePicker from '../../components/form/TimePicker';
+import { parseTimeRange, formatTimeRange } from '../../utils/dateTimeUtils';
+import { calculateEventStatus } from '../../utils/eventRules';
 import { EventCategory, EventStatus } from '../../types';
 
 const categories: EventCategory[] = [
@@ -23,9 +27,11 @@ export default function OrganizerEditEvent() {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<EventCategory>('Workshop');
   const [date, setDate] = useState('');
-  const [time, setTime] = useState('');
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
   const [venue, setVenue] = useState('');
   const [capacity, setCapacity] = useState('');
+  const [registeredCount, setRegisteredCount] = useState(0);
   const [status, setStatus] = useState<EventStatus>('upcoming');
   const [registrationDeadline, setRegistrationDeadline] = useState('');
   const [image, setImage] = useState('');
@@ -45,10 +51,19 @@ export default function OrganizerEditEvent() {
       setDescription(ev.description);
       setCategory(ev.category);
       setDate(ev.date ? ev.date.substring(0, 10) : '');
-      setTime(ev.time);
+
+      const parsedTimes = parseTimeRange(ev.time);
+      setStartTime(parsedTimes.startTime || '10:00 AM');
+      setEndTime(parsedTimes.endTime || '04:00 PM');
+
       setVenue(ev.venue);
       setCapacity(String(ev.capacity));
-      setStatus(ev.status);
+      setRegisteredCount(ev.registeredCount || 0);
+
+      // Determine authoritative automatic status
+      const autoStatus = calculateEventStatus(ev);
+      setStatus(autoStatus);
+
       setRegistrationDeadline(
         ev.registrationDeadline ? ev.registrationDeadline.substring(0, 10) : ''
       );
@@ -64,31 +79,98 @@ export default function OrganizerEditEvent() {
     loadEvent();
   }, [loadEvent]);
 
+  // Enforcement: Only upcoming events can be edited
+  const isEditable = status === 'upcoming';
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id) return;
     setError(null);
 
+    if (!isEditable) {
+      setError(`Cannot update event: Event is currently ${status}.`);
+      return;
+    }
+
+    // 1. Title validation
+    if (title.trim().length < 3) {
+      setError('Event title must be at least 3 characters long.');
+      return;
+    }
+    if (title.trim().length > 150) {
+      setError('Event title cannot exceed 150 characters.');
+      return;
+    }
+
+    // 2. Description validation
+    if (description.trim().length < 10) {
+      setError('Event description must be at least 10 characters long.');
+      return;
+    }
+
+    // 3. Venue validation
+    if (venue.trim().length < 2) {
+      setError('Venue must be at least 2 characters long.');
+      return;
+    }
+
+    // 4. Capacity validation: positive whole number & cannot be reduced below registered students
+    const capNum = Number(capacity);
+    if (!Number.isInteger(capNum) || capNum <= 0) {
+      setError('Capacity must be a positive whole number.');
+      return;
+    }
+
+    if (capNum < registeredCount) {
+      setError(
+        `Capacity cannot be reduced below the current number of registered students (${registeredCount} registered).`
+      );
+      return;
+    }
+
+    // 5. Date validation
+    if (!date) {
+      setError('Please select an event date.');
+      return;
+    }
+
+    // 6. Time validation
+    if (!startTime || !endTime) {
+      setError('Please provide both start time and end time.');
+      return;
+    }
+
+    // 7. Registration deadline validation
+    if (registrationDeadline && date && new Date(registrationDeadline) > new Date(date)) {
+      setError('Registration deadline cannot be after the event date.');
+      return;
+    }
+
+    const combinedTime = formatTimeRange(startTime, endTime);
+
     setSaving(true);
     try {
       await eventService.updateEvent(id, {
-        title,
-        description,
+        title: title.trim(),
+        description: description.trim(),
         category,
         date: new Date(date).toISOString(),
-        time,
-        venue,
-        capacity: Number(capacity),
+        time: combinedTime,
+        venue: venue.trim(),
+        capacity: capNum,
         status,
-        registrationDeadline: new Date(registrationDeadline).toISOString(),
-        image,
+        registrationDeadline: registrationDeadline
+          ? new Date(registrationDeadline).toISOString()
+          : new Date(date).toISOString(),
+        image: image.trim(),
       });
 
       showToast(`Event "${title}" updated successfully!`, 'success');
       navigate('/organizer/events');
     } catch (err: any) {
-      setError(err.message || 'Update failed.');
-      showToast(err.message || 'Update failed', 'error');
+      const msg = err.response?.data?.message || err.message || 'Update failed.';
+      setError(msg);
+      showToast(msg, 'error');
     } finally {
       setSaving(false);
     }
@@ -110,7 +192,7 @@ export default function OrganizerEditEvent() {
             Edit Event Parameters
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Update schedule, location, capacity, or status.
+            Update schedule, location, capacity, or details using calendar and clock pickers.
           </p>
         </div>
         <Link
@@ -121,8 +203,17 @@ export default function OrganizerEditEvent() {
         </Link>
       </div>
 
+      {!isEditable && (
+        <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 text-xs font-semibold border border-amber-300 dark:border-amber-800 flex items-center gap-2">
+          <span>⚠️</span>
+          <span>
+            This event is currently <strong>{status.toUpperCase()}</strong>. In accordance with university policy, only upcoming events can be modified.
+          </span>
+        </div>
+      )}
+
       {error && (
-        <div className="p-4 rounded-xl bg-rose-50 text-rose-600 text-xs font-semibold">
+        <div className="p-4 rounded-xl bg-rose-50 text-rose-600 text-xs font-semibold border border-rose-200">
           ⚠️ {error}
         </div>
       )}
@@ -130,10 +221,11 @@ export default function OrganizerEditEvent() {
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="p-6 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200/80 dark:border-gray-700/60 shadow-sm space-y-4">
           <div>
-            <Label>Event Title</Label>
+            <Label>Event Title <span className="text-error-500">*</span></Label>
             <Input
               type="text"
               value={title}
+              disabled={!isEditable}
               onChange={(e) => setTitle(e.target.value)}
               required
             />
@@ -141,11 +233,12 @@ export default function OrganizerEditEvent() {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <Label>Category</Label>
+              <Label>Category <span className="text-error-500">*</span></Label>
               <select
                 value={category}
+                disabled={!isEditable}
                 onChange={(e) => setCategory(e.target.value as EventCategory)}
-                className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2 text-sm text-gray-800 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2 text-sm text-gray-800 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-white disabled:opacity-50"
               >
                 {categories.map((c) => (
                   <option key={c} value={c} className="dark:bg-gray-800">
@@ -156,59 +249,89 @@ export default function OrganizerEditEvent() {
             </div>
 
             <div>
-              <Label>Capacity</Label>
+              <Label>
+                Capacity <span className="text-error-500">*</span>
+                {registeredCount > 0 && (
+                  <span className="text-[11px] text-brand-600 ml-1">
+                    (min {registeredCount} enrolled)
+                  </span>
+                )}
+              </Label>
               <Input
                 type="number"
-                min="1"
+                min={String(registeredCount > 0 ? registeredCount : 1)}
+                step={1}
                 value={capacity}
+                disabled={!isEditable}
                 onChange={(e) => setCapacity(e.target.value)}
                 required
               />
             </div>
 
             <div>
-              <Label>Event Status</Label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as EventStatus)}
-                className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2 text-sm text-gray-800 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-              >
-                <option value="upcoming" className="dark:bg-gray-800">Upcoming</option>
-                <option value="ongoing" className="dark:bg-gray-800">Ongoing</option>
-                <option value="completed" className="dark:bg-gray-800">Completed</option>
-                <option value="cancelled" className="dark:bg-gray-800">Cancelled</option>
-              </select>
+              <Label>Current Event Status</Label>
+              <div className="h-11 flex items-center px-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-sm font-semibold capitalize text-gray-700 dark:text-gray-300">
+                <span
+                  className={`inline-block size-2 rounded-full mr-2 ${
+                    status === 'upcoming'
+                      ? 'bg-emerald-500'
+                      : status === 'ongoing'
+                      ? 'bg-amber-500'
+                      : status === 'completed'
+                      ? 'bg-gray-400'
+                      : 'bg-rose-500'
+                  }`}
+                />
+                {status} (Auto-calculated)
+              </div>
             </div>
           </div>
 
           <div>
-            <Label>Description</Label>
+            <Label>Description <span className="text-error-500">*</span></Label>
             <textarea
               rows={4}
               value={description}
+              disabled={!isEditable}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full p-3.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900 text-sm focus:border-brand-500 focus:outline-none"
+              className="w-full p-3.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900 text-sm focus:border-brand-500 focus:outline-none dark:text-white disabled:opacity-50"
               required
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <Label>Event Date</Label>
-              <Input
-                type="date"
+              <Label>Event Date <span className="text-error-500">*</span></Label>
+              <DatePicker
+                id="edit-event-date"
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
+                disabled={!isEditable}
+                placeholder="Select date"
+                onChange={(val) => setDate(val)}
                 required
               />
             </div>
 
             <div>
-              <Label>Time</Label>
-              <Input
-                type="text"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
+              <Label>Start Time <span className="text-error-500">*</span></Label>
+              <TimePicker
+                id="edit-event-start-time"
+                value={startTime}
+                disabled={!isEditable}
+                placeholder="Start time"
+                onChange={(val) => setStartTime(val)}
+                required
+              />
+            </div>
+
+            <div>
+              <Label>End Time <span className="text-error-500">*</span></Label>
+              <TimePicker
+                id="edit-event-end-time"
+                value={endTime}
+                disabled={!isEditable}
+                placeholder="End time"
+                onChange={(val) => setEndTime(val)}
                 required
               />
             </div>
@@ -216,21 +339,25 @@ export default function OrganizerEditEvent() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <Label>Venue</Label>
+              <Label>Venue <span className="text-error-500">*</span></Label>
               <Input
                 type="text"
                 value={venue}
+                disabled={!isEditable}
                 onChange={(e) => setVenue(e.target.value)}
                 required
               />
             </div>
 
             <div>
-              <Label>Registration Deadline</Label>
-              <Input
-                type="date"
+              <Label>Registration Deadline <span className="text-error-500">*</span></Label>
+              <DatePicker
+                id="edit-event-deadline"
                 value={registrationDeadline}
-                onChange={(e) => setRegistrationDeadline(e.target.value)}
+                disabled={!isEditable}
+                maxDate={date || undefined}
+                placeholder="Registration deadline"
+                onChange={(val) => setRegistrationDeadline(val)}
                 required
               />
             </div>
@@ -241,6 +368,7 @@ export default function OrganizerEditEvent() {
             <Input
               type="url"
               value={image}
+              disabled={!isEditable}
               onChange={(e) => setImage(e.target.value)}
             />
           </div>
@@ -249,13 +377,13 @@ export default function OrganizerEditEvent() {
         <div className="flex justify-end gap-3">
           <Link
             to="/organizer/events"
-            className="px-5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-700 dark:text-gray-300"
+            className="px-5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
           >
             Cancel
           </Link>
           <Button
             className="px-6 py-2.5 text-xs font-bold"
-            disabled={saving}
+            disabled={saving || !isEditable}
           >
             {saving ? 'Saving Changes...' : 'Save Modifications'}
           </Button>

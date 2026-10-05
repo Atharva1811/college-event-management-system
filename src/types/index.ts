@@ -34,8 +34,21 @@ export interface User {
   department?: Department;
   avatar?: string;
   isActive: boolean;
+  organizerStatus?: 'pending' | 'approved' | 'denied';
+  applicationReason?: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface AppNotification {
+  _id: string;
+  recipient: string | User;
+  type: 'event_cancelled' | 'event_deleted' | 'event_status' | 'organizer_application' | 'organizer_approved' | 'organizer_denied' | 'general';
+  title: string;
+  message: string;
+  relatedEvent?: string | Event;
+  isRead: boolean;
+  createdAt: string;
 }
 
 export interface AuthResponse {

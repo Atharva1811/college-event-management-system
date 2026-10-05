@@ -61,12 +61,32 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    organizerStatus: {
+      type: String,
+      enum: ['pending', 'approved', 'denied'],
+      default: 'approved',
+    },
+    applicationReason: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    resetPasswordToken: {
+      type: String,
+      select: false,
+    },
+    resetPasswordExpire: {
+      type: Date,
+      select: false,
+    },
   },
   {
     timestamps: true,
     toJSON: {
       transform(_doc, ret) {
         delete ret.password;
+        delete ret.resetPasswordToken;
+        delete ret.resetPasswordExpire;
         return ret;
       },
     },

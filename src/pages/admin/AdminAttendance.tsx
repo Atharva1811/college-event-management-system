@@ -3,6 +3,7 @@ import { registrationService } from '../../services/registrationService';
 import { eventService } from '../../services/eventService';
 import { useToast } from '../../context/ToastContext';
 import { Registration, Event, Department } from '../../types';
+import DatePicker from '../../components/form/DatePicker';
 
 const departments: Array<Department | 'All'> = [
   'All',
@@ -25,6 +26,8 @@ export default function AdminAttendance() {
   const [selectedDept, setSelectedDept] = useState<Department | 'All'>('All');
   const [selectedAttendance, setSelectedAttendance] = useState<string>('All');
   const [search, setSearch] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
 
   const { showToast } = useToast();
 
@@ -80,6 +83,15 @@ export default function AdminAttendance() {
 
     if (selectedAttendance !== 'All') {
       if (r.attendance !== selectedAttendance) return false;
+    }
+
+    if (fromDate) {
+      const regDate = new Date(r.registeredAt).toISOString().split('T')[0];
+      if (regDate < fromDate) return false;
+    }
+    if (toDate) {
+      const regDate = new Date(r.registeredAt).toISOString().split('T')[0];
+      if (regDate > toDate) return false;
     }
 
     if (search) {
@@ -152,52 +164,88 @@ export default function AdminAttendance() {
       </div>
 
       {/* Filter Bar */}
-      <div className="p-4 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200/80 dark:border-gray-700/60 shadow-sm flex flex-wrap items-center gap-3">
-        <div className="flex-1 min-w-[200px]">
-          <input
-            type="text"
-            placeholder="Search student name, email, or event title..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full px-3.5 py-2 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:border-brand-500"
-          />
+      <div className="p-4 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200/80 dark:border-gray-700/60 shadow-sm space-y-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex-1 min-w-[200px]">
+            <input
+              type="text"
+              placeholder="Search student name, email, or event title..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full px-3.5 py-2 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:border-brand-500"
+            />
+          </div>
+
+          <select
+            value={selectedEvent}
+            onChange={(e) => setSelectedEvent(e.target.value)}
+            className="px-3 py-2 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300"
+          >
+            <option value="All">All Events</option>
+            {events.map((ev) => (
+              <option key={ev._id} value={ev._id}>
+                {ev.title}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={selectedDept}
+            onChange={(e) => setSelectedDept(e.target.value as Department | 'All')}
+            className="px-3 py-2 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300"
+          >
+            {departments.map((dept) => (
+              <option key={dept} value={dept}>
+                {dept === 'All' ? 'All Departments' : dept}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={selectedAttendance}
+            onChange={(e) => setSelectedAttendance(e.target.value)}
+            className="px-3 py-2 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300"
+          >
+            <option value="All">All Attendance Status</option>
+            <option value="present">Present</option>
+            <option value="absent">Absent</option>
+            <option value="pending">Pending</option>
+          </select>
         </div>
 
-        <select
-          value={selectedEvent}
-          onChange={(e) => setSelectedEvent(e.target.value)}
-          className="px-3 py-2 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300"
-        >
-          <option value="All">All Events</option>
-          {events.map((ev) => (
-            <option key={ev._id} value={ev._id}>
-              {ev.title}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={selectedDept}
-          onChange={(e) => setSelectedDept(e.target.value as Department | 'All')}
-          className="px-3 py-2 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300"
-        >
-          {departments.map((dept) => (
-            <option key={dept} value={dept}>
-              {dept === 'All' ? 'All Departments' : dept}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={selectedAttendance}
-          onChange={(e) => setSelectedAttendance(e.target.value)}
-          className="px-3 py-2 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300"
-        >
-          <option value="All">All Attendance Status</option>
-          <option value="present">Present</option>
-          <option value="absent">Absent</option>
-          <option value="pending">Pending</option>
-        </select>
+        {/* Date Filter Row with DatePicker Calendar */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-2 border-t border-gray-100 dark:border-gray-700/60">
+          <div>
+            <label className="block text-[11px] font-bold text-gray-500 mb-1">From Date (Calendar)</label>
+            <DatePicker
+              value={fromDate}
+              onChange={(val) => setFromDate(val)}
+              placeholder="Filter from date..."
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] font-bold text-gray-500 mb-1">To Date (Calendar)</label>
+            <DatePicker
+              value={toDate}
+              minDate={fromDate || undefined}
+              onChange={(val) => setToDate(val)}
+              placeholder="Filter to date..."
+            />
+          </div>
+          {(fromDate || toDate) && (
+            <div className="flex items-end pb-1">
+              <button
+                onClick={() => {
+                  setFromDate('');
+                  setToDate('');
+                }}
+                className="text-xs text-rose-500 hover:text-rose-700 font-semibold cursor-pointer underline"
+              >
+                Clear Date Filters
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Attendance Table */}

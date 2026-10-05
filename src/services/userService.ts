@@ -110,4 +110,24 @@ export const userService = {
 
     await api.delete(`/users/${id}`);
   },
+
+  async updateOrganizerStatus(id: string, status: 'approved' | 'denied'): Promise<User> {
+    if (isMockMode()) {
+      await new Promise((r) => setTimeout(r, 250));
+      const list = getStoredUsers();
+      const index = list.findIndex((u) => u._id === id);
+      if (index === -1) throw new Error('User not found');
+
+      list[index] = {
+        ...list[index],
+        organizerStatus: status,
+        isActive: status === 'approved',
+      };
+      saveStoredUsers(list);
+      return list[index];
+    }
+
+    const response = await api.patch(`/users/${id}/organizer-status`, { status });
+    return response.data.data;
+  },
 };

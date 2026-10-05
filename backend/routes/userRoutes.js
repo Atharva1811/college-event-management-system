@@ -10,6 +10,7 @@ router.use(protect);
 router.get('/', authorize('admin'), userController.getUsers);
 router.get('/:id', userController.getUserById);
 router.put('/:id', userController.updateUser);
+router.patch('/:id/organizer-status', authorize('admin'), userController.updateOrganizerStatus);
 router.delete('/:id', authorize('admin'), userController.deleteUser);
 
 export default router;

@@ -5,6 +5,9 @@ import { useToast } from '../../context/ToastContext';
 import Label from '../../components/form/Label';
 import Input from '../../components/form/input/InputField';
 import Button from '../../components/ui/button/Button';
+import DatePicker from '../../components/form/DatePicker';
+import TimePicker from '../../components/form/TimePicker';
+import { formatTimeRange } from '../../utils/dateTimeUtils';
 import { EventCategory } from '../../types';
 
 const categories: EventCategory[] = [
@@ -22,7 +25,8 @@ export default function OrganizerCreateEvent() {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<EventCategory>('Workshop');
   const [date, setDate] = useState('2026-11-25');
-  const [time, setTime] = useState('10:00 AM - 04:00 PM');
+  const [startTime, setStartTime] = useState('10:00 AM');
+  const [endTime, setEndTime] = useState('04:00 PM');
   const [venue, setVenue] = useState('Computer Science Seminar Complex');
   const [capacity, setCapacity] = useState('60');
   const [registrationDeadline, setRegistrationDeadline] = useState('2026-11-22');
@@ -39,35 +43,98 @@ export default function OrganizerCreateEvent() {
     e.preventDefault();
     setError(null);
 
-    if (new Date(registrationDeadline) > new Date(date)) {
-      setError('Registration deadline cannot be after the scheduled event date.');
+    // 1. Title validation
+    if (title.trim().length < 3) {
+      setError('Event title must be at least 3 characters long.');
+      return;
+    }
+    if (title.trim().length > 150) {
+      setError('Event title cannot exceed 150 characters.');
       return;
     }
 
-    if (Number(capacity) < 1) {
-      setError('Capacity must be at least 1 seat.');
+    // 2. Description validation
+    if (description.trim().length < 10) {
+      setError('Event description must be at least 10 characters long.');
       return;
     }
+
+    // 3. Venue validation
+    if (venue.trim().length < 2) {
+      setError('Venue must be at least 2 characters long.');
+      return;
+    }
+
+    // 4. Capacity validation: positive whole number
+    const capNum = Number(capacity);
+    if (!Number.isInteger(capNum) || capNum <= 0) {
+      setError('Capacity must be a positive whole number.');
+      return;
+    }
+
+    // 5. Date validation
+    if (!date) {
+      setError('Please select an event date.');
+      return;
+    }
+
+    const eventDateObj = new Date(date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (eventDateObj < today) {
+      setError('Event date cannot be in the past.');
+      return;
+    }
+
+    // 6. Time validation
+    if (!startTime) {
+      setError('Please select a start time.');
+      return;
+    }
+    if (!endTime) {
+      setError('Please select an end time.');
+      return;
+    }
+
+    // 7. Registration deadline validation
+    if (!registrationDeadline) {
+      setError('Please select a registration deadline.');
+      return;
+    }
+
+    const deadlineObj = new Date(registrationDeadline);
+    if (deadlineObj > eventDateObj) {
+      setError('Registration deadline cannot be after the scheduled event date.');
+      return;
+    }
+    if (deadlineObj < today) {
+      setError('Registration deadline cannot be in the past.');
+      return;
+    }
+
+    const combinedTime = formatTimeRange(startTime, endTime);
 
     setLoading(true);
     try {
       await eventService.createEvent({
-        title,
-        description,
+        title: title.trim(),
+        description: description.trim(),
         category,
         date: new Date(date).toISOString(),
-        time,
-        venue,
-        capacity: Number(capacity),
+        time: combinedTime,
+        venue: venue.trim(),
+        capacity: capNum,
         registrationDeadline: new Date(registrationDeadline).toISOString(),
-        image,
+        image: image.trim(),
       });
 
       showToast(`Event "${title}" published successfully!`, 'success');
       navigate('/organizer/events');
     } catch (err: any) {
-      setError(err.message || 'Failed to create event.');
-      showToast(err.message || 'Event creation failed', 'error');
+      const msg = err.response?.data?.message || err.message || 'Failed to create event.';
+      setError(msg);
+      showToast(msg, 'error');
     } finally {
       setLoading(false);
     }
@@ -82,7 +149,7 @@ export default function OrganizerCreateEvent() {
             Create Campus Event
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Fill in the event parameters below to schedule a new collegiate activity.
+            Fill in the event parameters below using calendar and time pickers.
           </p>
         </div>
         <Link
@@ -138,6 +205,7 @@ export default function OrganizerCreateEvent() {
               <Input
                 type="number"
                 min="1"
+                step={1}
                 placeholder="60"
                 value={capacity}
                 onChange={(e) => setCapacity(e.target.value)}
@@ -153,7 +221,7 @@ export default function OrganizerCreateEvent() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Outline the schedule, speaker background, prerequisites, and learning outcomes..."
-              className="w-full p-3.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900 text-sm focus:border-brand-500 focus:outline-none"
+              className="w-full p-3.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900 text-sm focus:border-brand-500 focus:outline-none dark:text-white"
               required
             />
           </div>
@@ -165,24 +233,37 @@ export default function OrganizerCreateEvent() {
             2. Schedule & Logistics
           </h3>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <Label>Event Date <span className="text-error-500">*</span></Label>
-              <Input
-                type="date"
+              <DatePicker
+                id="create-event-date"
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
+                minDate="today"
+                placeholder="Select event date"
+                onChange={(val) => setDate(val)}
                 required
               />
             </div>
 
             <div>
-              <Label>Time Interval <span className="text-error-500">*</span></Label>
-              <Input
-                type="text"
-                placeholder="10:00 AM - 04:00 PM"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
+              <Label>Start Time <span className="text-error-500">*</span></Label>
+              <TimePicker
+                id="create-event-start-time"
+                value={startTime}
+                placeholder="Select start time"
+                onChange={(val) => setStartTime(val)}
+                required
+              />
+            </div>
+
+            <div>
+              <Label>End Time <span className="text-error-500">*</span></Label>
+              <TimePicker
+                id="create-event-end-time"
+                value={endTime}
+                placeholder="Select end time"
+                onChange={(val) => setEndTime(val)}
                 required
               />
             </div>
@@ -202,10 +283,13 @@ export default function OrganizerCreateEvent() {
 
             <div>
               <Label>Registration Deadline <span className="text-error-500">*</span></Label>
-              <Input
-                type="date"
+              <DatePicker
+                id="create-event-deadline"
                 value={registrationDeadline}
-                onChange={(e) => setRegistrationDeadline(e.target.value)}
+                minDate="today"
+                maxDate={date || undefined}
+                placeholder="Select deadline date"
+                onChange={(val) => setRegistrationDeadline(val)}
                 required
               />
             </div>
@@ -242,7 +326,7 @@ export default function OrganizerCreateEvent() {
         <div className="flex items-center justify-end gap-3 pt-2">
           <Link
             to="/organizer/events"
-            className="px-5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50"
+            className="px-5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
           >
             Cancel
           </Link>

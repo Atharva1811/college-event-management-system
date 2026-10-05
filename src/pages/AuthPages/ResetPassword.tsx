@@ -1,20 +1,33 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { ChevronLeftIcon } from '../../icons';
 import Label from '../../components/form/Label';
 import Input from '../../components/form/input/InputField';
 import Button from '../../components/ui/button/Button';
 import { useToast } from '../../context/ToastContext';
+import { authService } from '../../services/authService';
 
 export default function ResetPassword() {
+  const [searchParams] = useSearchParams();
+  const tokenFromUrl = searchParams.get('token') || '';
+  const [token, setToken] = useState(tokenFromUrl);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const { showToast } = useToast();
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+
+    const activeToken = token.trim();
+    if (!activeToken) {
+      setError('A valid reset token is required. Please check your email recovery link.');
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError('Passwords do not match.');
       return;
@@ -24,8 +37,17 @@ export default function ResetPassword() {
       return;
     }
 
-    showToast('Password reset successfully! Please sign in with your new password.', 'success');
-    navigate('/signin');
+    setLoading(true);
+    try {
+      await authService.resetPassword(activeToken, password);
+      showToast('Password reset successfully! Please sign in with your new password.', 'success');
+      navigate('/signin');
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      setError(errorObj.response?.data?.message || errorObj.message || 'Password reset failed or token expired.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -55,11 +77,24 @@ export default function ResetPassword() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {!tokenFromUrl && (
+            <div>
+              <Label>Reset Security Token <span className="text-error-500">*</span></Label>
+              <Input
+                type="text"
+                placeholder="Paste the reset token from your recovery link"
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+                required
+              />
+            </div>
+          )}
+
           <div>
             <Label>New Password <span className="text-error-500">*</span></Label>
             <Input
               type="password"
-              placeholder="Enter new password"
+              placeholder="Enter new password (min 6 chars)"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -77,8 +112,11 @@ export default function ResetPassword() {
             />
           </div>
 
-          <Button className="w-full py-3 text-sm font-bold shadow-lg shadow-brand-500/20">
-            Update Password
+          <Button
+            className="w-full py-3 text-sm font-bold shadow-lg shadow-brand-500/20"
+            disabled={loading}
+          >
+            {loading ? 'Updating Password...' : 'Update Password'}
           </Button>
         </form>
       </div>

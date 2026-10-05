@@ -15,6 +15,7 @@ import registrationRoutes from './routes/registrationRoutes.js';
 import attendanceRoutes from './routes/attendanceRoutes.js';
 import feedbackRoutes from './routes/feedbackRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
 import { notFound, errorHandler } from './middleware/errorMiddleware.js';
 
 const app = express();
@@ -104,6 +105,7 @@ app.use('/api/registrations', registrationRoutes);
 app.use('/api/registrations', attendanceRoutes);
 app.use('/api/registrations', feedbackRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Error Handling
 app.use(notFound);

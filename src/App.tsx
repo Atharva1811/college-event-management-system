@@ -10,6 +10,7 @@ import SignIn from "./pages/AuthPages/SignIn";
 import SignUp from "./pages/AuthPages/SignUp";
 import ForgotPassword from "./pages/AuthPages/ForgotPassword";
 import ResetPassword from "./pages/AuthPages/ResetPassword";
+import OrganizerApplication from "./pages/AuthPages/OrganizerApplication";
 import NotFound from "./pages/OtherPage/NotFound";
 import Unauthorized from "./pages/OtherPage/Unauthorized";
 
@@ -71,6 +72,8 @@ export default function App() {
         <Route path="/register" element={<SignUp />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/apply-organizer" element={<OrganizerApplication />} />
+        <Route path="/organizer/apply" element={<OrganizerApplication />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
 
         {/* Protected Dashboard Layout */}

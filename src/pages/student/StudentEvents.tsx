@@ -4,6 +4,8 @@ import { eventService } from '../../services/eventService';
 import { registrationService } from '../../services/registrationService';
 import { useToast } from '../../context/ToastContext';
 import { Event, EventCategory } from '../../types';
+import DatePicker from '../../components/form/DatePicker';
+import { calculateEventStatus } from '../../utils/eventRules';
 
 const categories: Array<EventCategory | 'All'> = [
   'All',
@@ -26,6 +28,8 @@ export default function StudentEvents() {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory);
   const [selectedStatus, setSelectedStatus] = useState<string>('All');
+  const [fromDate, setFromDate] = useState<string>('');
+  const [toDate, setToDate] = useState<string>('');
   const [sortField, setSortField] = useState<string>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [loading, setLoading] = useState(true);
@@ -142,6 +146,7 @@ export default function StudentEvents() {
             >
               <option value="All">Status: All</option>
               <option value="upcoming">Status: Upcoming</option>
+              <option value="ongoing">Status: Ongoing</option>
               <option value="completed">Status: Completed</option>
               <option value="cancelled">Status: Cancelled</option>
             </select>
@@ -164,6 +169,47 @@ export default function StudentEvents() {
               <option value="capacity_desc">Capacity: Highest</option>
             </select>
           </div>
+        </div>
+
+        {/* Date Range Calendar Filters */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-1 border-t border-gray-100 dark:border-gray-700/60">
+          <div>
+            <label className="block text-[11px] font-bold text-gray-500 mb-1">From Date (Calendar)</label>
+            <DatePicker
+              value={fromDate}
+              onChange={(val) => {
+                setFromDate(val);
+                setPage(1);
+              }}
+              placeholder="Filter from date..."
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] font-bold text-gray-500 mb-1">To Date (Calendar)</label>
+            <DatePicker
+              value={toDate}
+              minDate={fromDate || undefined}
+              onChange={(val) => {
+                setToDate(val);
+                setPage(1);
+              }}
+              placeholder="Filter to date..."
+            />
+          </div>
+          {(fromDate || toDate) && (
+            <div className="flex items-end pb-1">
+              <button
+                onClick={() => {
+                  setFromDate('');
+                  setToDate('');
+                  setPage(1);
+                }}
+                className="text-xs text-rose-500 hover:text-rose-700 font-semibold cursor-pointer underline"
+              >
+                Clear Date Filters
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Quick Category Chips */}
@@ -222,15 +268,28 @@ export default function StudentEvents() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {events.map((event) => {
+          {events
+            .filter((ev) => {
+              if (fromDate) {
+                const evDate = new Date(ev.date).toISOString().substring(0, 10);
+                if (evDate < fromDate) return false;
+              }
+              if (toDate) {
+                const evDate = new Date(ev.date).toISOString().substring(0, 10);
+                if (evDate > toDate) return false;
+              }
+              return true;
+            })
+            .map((event) => {
             const orgName =
               typeof event.organizer === 'object'
                 ? event.organizer.name
                 : 'Faculty Coordinator';
 
             const isExpired = new Date() > new Date(event.registrationDeadline);
+            const dynamicStatus = calculateEventStatus(event);
             const canRegister =
-              event.status === 'upcoming' && !event.isFull && !isExpired;
+              dynamicStatus === 'upcoming' && !event.isFull && !isExpired;
 
             return (
               <div
@@ -325,10 +384,12 @@ export default function StudentEvents() {
                         disabled
                         className="flex-1 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-400 text-xs font-semibold cursor-not-allowed"
                       >
-                        {event.status === 'completed'
+                        {dynamicStatus === 'completed'
                           ? 'Ended'
-                          : event.status === 'cancelled'
+                          : dynamicStatus === 'cancelled'
                           ? 'Cancelled'
+                          : dynamicStatus === 'ongoing'
+                          ? 'In Progress'
                           : isExpired
                           ? 'Deadline Passed'
                           : 'Full'}

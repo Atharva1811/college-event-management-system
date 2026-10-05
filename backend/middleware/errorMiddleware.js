@@ -20,7 +20,7 @@ export const notFound = (req, res, next) => {
 
 // Centralized Error Handling Middleware
 export const errorHandler = (err, req, res, _next) => {
-  let statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+  let statusCode = err.statusCode || (res.statusCode === 200 ? 500 : res.statusCode);
   let message = err.message || 'Internal Server Error';
   let errors = [];
 

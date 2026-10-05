@@ -1,5 +1,7 @@
 import User from '../models/User.js';
 import { isConnected } from '../config/db.js';
+import { assertCanDeleteOrganizer } from '../utils/eventRules.js';
+import { createNotification } from '../services/notificationService.js';
 
 export const getUsers = async (req, res, next) => {
   try {
@@ -10,7 +12,7 @@ export const getUsers = async (req, res, next) => {
       });
     }
 
-    const { role, department, search, page = 1, limit = 10, isActive } = req.query;
+    const { role, department, search, page = 1, limit = 10, isActive, organizerStatus } = req.query;
     const filter = {};
 
     if (role && role !== 'All') {
@@ -23,6 +25,10 @@ export const getUsers = async (req, res, next) => {
 
     if (typeof isActive !== 'undefined') {
       filter.isActive = isActive === 'true';
+    }
+
+    if (organizerStatus && organizerStatus !== 'All') {
+      filter.organizerStatus = organizerStatus;
     }
 
     if (search) {
@@ -138,12 +144,83 @@ export const updateUser = async (req, res, next) => {
   }
 };
 
+export const updateOrganizerStatus = async (req, res, next) => {
+  try {
+    if (!isConnected()) {
+      return res.status(503).json({
+        success: false,
+        message: 'Database is not connected. Please verify MongoDB connection.',
+      });
+    }
+
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: Only administrators can review organizer applications.',
+      });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found.',
+      });
+    }
+
+    const { status } = req.body;
+    if (!['approved', 'denied'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Status must be either "approved" or "denied".',
+      });
+    }
+
+    user.organizerStatus = status;
+    user.isActive = status === 'approved';
+
+    await user.save();
+
+    // Send notification to the organizer applicant
+    if (status === 'approved') {
+      await createNotification({
+        recipient: user._id,
+        type: 'application_approved',
+        title: 'Organizer Application Approved',
+        message: 'Congratulations! Your faculty organizer application has been approved. You can now log in and manage campus events.',
+      });
+    } else {
+      await createNotification({
+        recipient: user._id,
+        type: 'application_denied',
+        title: 'Organizer Application Update',
+        message: 'Your faculty organizer application has been reviewed and denied by the administration.',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Organizer application has been ${status}.`,
+      data: user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const deleteUser = async (req, res, next) => {
   try {
     if (!isConnected()) {
       return res.status(503).json({
         success: false,
         message: 'Database is not connected. Please verify MongoDB connection.',
+      });
+    }
+
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: Only administrators can delete user accounts.',
       });
     }
 
@@ -160,6 +237,11 @@ export const deleteUser = async (req, res, next) => {
         success: false,
         message: 'You cannot delete your own account.',
       });
+    }
+
+    // Constraint: Organizer cannot be deleted while they have an ongoing event
+    if (user.role === 'organizer') {
+      await assertCanDeleteOrganizer(user._id);
     }
 
     await User.findByIdAndDelete(req.params.id);

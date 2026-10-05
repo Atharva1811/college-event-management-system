@@ -4,14 +4,27 @@ import { ChevronLeftIcon } from '../../icons';
 import Label from '../../components/form/Label';
 import Input from '../../components/form/input/InputField';
 import Button from '../../components/ui/button/Button';
+import { authService } from '../../services/authService';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    setError(null);
+    setLoading(true);
+    try {
+      await authService.forgotPassword(email);
+      setSubmitted(true);
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      setError(errorObj.response?.data?.message || errorObj.message || 'Failed to submit recovery request.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -41,6 +54,13 @@ export default function ForgotPassword() {
             Enter your university email and we will send you a password recovery link.
           </p>
         </div>
+
+        {error && (
+          <div className="mb-4 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 text-xs font-semibold flex items-center gap-2">
+            <span>⚠️</span>
+            <span>{error}</span>
+          </div>
+        )}
 
         {submitted ? (
           <div className="p-6 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-center">
@@ -73,8 +93,11 @@ export default function ForgotPassword() {
               />
             </div>
 
-            <Button className="w-full py-3 text-sm font-bold shadow-lg shadow-brand-500/20">
-              Send Reset Instructions
+            <Button
+              className="w-full py-3 text-sm font-bold shadow-lg shadow-brand-500/20"
+              disabled={loading}
+            >
+              {loading ? 'Sending Instructions...' : 'Send Reset Instructions'}
             </Button>
           </form>
         )}

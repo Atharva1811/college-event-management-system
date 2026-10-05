@@ -4,6 +4,7 @@ import { eventService } from '../../services/eventService';
 import { registrationService } from '../../services/registrationService';
 import { useToast } from '../../context/ToastContext';
 import { Event, Registration } from '../../types';
+import { calculateEventStatus } from '../../utils/eventRules';
 
 export default function StudentEventDetails() {
   const { id } = useParams<{ id: string }>();
@@ -93,12 +94,16 @@ export default function StudentEventDetails() {
   const orgName = typeof event.organizer === 'object' ? event.organizer.name : 'Faculty Staff';
   const orgDept = typeof event.organizer === 'object' ? event.organizer.department : 'College';
 
+  const dynamicStatus = calculateEventStatus(event);
+
   // Compute status badges
   let statusBadge = { label: 'Available', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
-  if (event.status === 'cancelled') {
+  if (dynamicStatus === 'cancelled') {
     statusBadge = { label: 'Cancelled', color: 'bg-rose-50 text-rose-700 border-rose-200' };
-  } else if (event.status === 'completed') {
+  } else if (dynamicStatus === 'completed') {
     statusBadge = { label: 'Completed', color: 'bg-gray-100 text-gray-700 border-gray-200' };
+  } else if (dynamicStatus === 'ongoing') {
+    statusBadge = { label: 'Ongoing', color: 'bg-amber-50 text-amber-700 border-amber-200' };
   } else if (isExpired) {
     statusBadge = { label: 'Registration Closed', color: 'bg-amber-50 text-amber-700 border-amber-200' };
   } else if (event.isFull) {
@@ -235,7 +240,7 @@ export default function StudentEventDetails() {
                 <div className="text-[11px] text-emerald-700 dark:text-emerald-400">
                   Enrolled on: {new Date(userRegistration.registeredAt).toLocaleDateString()}
                 </div>
-                {event.status === 'upcoming' && (
+                {dynamicStatus === 'upcoming' && (
                   <button
                     onClick={handleCancelRegistration}
                     disabled={actionLoading}
@@ -245,13 +250,17 @@ export default function StudentEventDetails() {
                   </button>
                 )}
               </div>
-            ) : event.status === 'cancelled' ? (
+            ) : dynamicStatus === 'cancelled' ? (
               <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/30 text-rose-700 text-xs font-medium">
                 This event has been cancelled by the organizers.
               </div>
-            ) : event.status === 'completed' ? (
+            ) : dynamicStatus === 'completed' ? (
               <div className="p-4 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs font-medium">
                 This event has concluded.
+              </div>
+            ) : dynamicStatus === 'ongoing' ? (
+              <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 text-amber-700 text-xs font-medium">
+                This event is currently in progress. Registrations are closed.
               </div>
             ) : isExpired ? (
               <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 text-amber-700 text-xs font-medium">

@@ -1,5 +1,6 @@
 import Registration from '../models/Registration.js';
 import Event from '../models/Event.js';
+import { assertCanRegister } from '../utils/eventRules.js';
 
 export const registerForEvent = async (studentId, eventId) => {
   // 1. Verify event exists
@@ -10,39 +11,16 @@ export const registerForEvent = async (studentId, eventId) => {
     throw error;
   }
 
-  // 2. Verify event is not cancelled
-  if (event.status === 'cancelled') {
-    const error = new Error('This event has been cancelled and is no longer accepting registrations.');
-    error.statusCode = 400;
-    throw error;
-  }
-
-  if (event.status === 'completed') {
-    const error = new Error('This event has already concluded.');
-    error.statusCode = 400;
-    throw error;
-  }
-
-  // 3. Verify registration deadline
-  if (new Date() > new Date(event.registrationDeadline)) {
-    const error = new Error('The registration deadline for this event has passed.');
-    error.statusCode = 400;
-    throw error;
-  }
-
-  // 4 & 5. Count currently active registered students and compare with capacity
+  // 2. Count active registrations for capacity check
   const activeRegistrationsCount = await Registration.countDocuments({
     event: eventId,
     status: 'registered',
   });
 
-  if (activeRegistrationsCount >= event.capacity) {
-    const error = new Error('Event capacity has been reached. No seats available.');
-    error.statusCode = 400;
-    throw error;
-  }
+  // 3. Centralized validation: upcoming, not started, not ongoing, not completed, not cancelled, capacity available, deadline valid
+  assertCanRegister({ event, registeredCount: activeRegistrationsCount });
 
-  // 6. Check whether student already has an existing registration record
+  // 4. Check whether student already has an existing registration record
   const existingRecord = await Registration.findOne({
     student: studentId,
     event: eventId,
@@ -55,7 +33,9 @@ export const registerForEvent = async (studentId, eventId) => {
       throw error;
     }
 
-    // 7. If cancelled registration exists, reactivate it (ADBMS state-preservation demonstration)
+    // Reactivation requires event to still be eligible for registration
+    assertCanRegister({ event, registeredCount: activeRegistrationsCount });
+
     existingRecord.status = 'registered';
     existingRecord.registeredAt = new Date();
     await existingRecord.save();

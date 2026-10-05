@@ -5,11 +5,14 @@ import { analyticsService } from '../../services/analyticsService';
 import { eventService } from '../../services/eventService';
 import { useAuth } from '../../context/AuthContext';
 import { Event, OrganizerAnalyticsSummary } from '../../types';
+import DatePicker from '../../components/form/DatePicker';
 
 export default function OrganizerAnalytics() {
   const { currentUser } = useAuth();
   const [analytics, setAnalytics] = useState<OrganizerAnalyticsSummary | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -98,6 +101,45 @@ export default function OrganizerAnalytics() {
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
           Quantitative metrics covering seat utilization, attendance yield, and student satisfaction.
         </p>
+      </div>
+
+      {/* Date Filter Bar for Organizer Reporting */}
+      <div className="p-4 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200/80 dark:border-gray-700/60 shadow-sm space-y-2">
+        <span className="text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider block">
+          Session Analytics Date Range
+        </span>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div>
+            <label className="block text-[11px] font-bold text-gray-500 mb-1">From Date (Calendar)</label>
+            <DatePicker
+              value={fromDate}
+              onChange={(val) => setFromDate(val)}
+              placeholder="Report start date..."
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] font-bold text-gray-500 mb-1">To Date (Calendar)</label>
+            <DatePicker
+              value={toDate}
+              minDate={fromDate || undefined}
+              onChange={(val) => setToDate(val)}
+              placeholder="Report end date..."
+            />
+          </div>
+          {(fromDate || toDate) && (
+            <div className="flex items-end pb-1">
+              <button
+                onClick={() => {
+                  setFromDate('');
+                  setToDate('');
+                }}
+                className="text-xs text-rose-500 hover:text-rose-700 font-semibold cursor-pointer underline"
+              >
+                Clear Date Filter
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* KPI Row */}
