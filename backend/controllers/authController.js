@@ -180,11 +180,11 @@ export const forgotPassword = async (req, res, next) => {
       });
     }
 
-    const { email } = req.body;
-    if (!email) {
+    const { email } = req.body || {};
+    if (!email || typeof email !== 'string' || !email.trim()) {
       return res.status(400).json({
         success: false,
-        message: 'Email address is required.',
+        message: 'A valid email address is required.',
       });
     }
 
@@ -204,8 +204,24 @@ export const resetPassword = async (req, res, next) => {
       });
     }
 
-    const { token } = req.params;
-    const { password } = req.body;
+    const token = req.body?.token || req.params?.token;
+    const { password } = req.body || {};
+
+    if (!token || typeof token !== 'string' || !token.trim()) {
+      return res.status(400).json({
+        success: false,
+        code: 'INVALID_RESET_TOKEN',
+        message: 'This password reset link is invalid or has expired.',
+      });
+    }
+
+    if (!password || typeof password !== 'string' || password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        code: 'INVALID_PASSWORD',
+        message: 'Password must be at least 6 characters long.',
+      });
+    }
 
     const result = await authService.resetPassword(token, password);
     res.status(200).json(result);

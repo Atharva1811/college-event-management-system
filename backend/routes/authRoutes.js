@@ -12,6 +12,7 @@ router.post('/apply-organizer-upgrade', protect, authController.applyOrganizerUp
 router.post('/login', loginValidator, authController.login);
 router.get('/me', protect, authController.getMe);
 router.post('/forgot-password', authController.forgotPassword);
+router.post('/reset-password', authController.resetPassword);
 router.post('/reset-password/:token', authController.resetPassword);
 
 export default router;

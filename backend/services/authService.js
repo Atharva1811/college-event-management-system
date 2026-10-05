@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import User from '../models/User.js';
 import { notifyAdmins } from './notificationService.js';
+import { sendPasswordResetEmail } from './emailService.js';
 
 export const generateToken = (user) => {
   return jwt.sign(
@@ -267,53 +268,112 @@ export const loginUser = async ({ email, password }) => {
   };
 };
 
-export const forgotPassword = async (email) => {
-  const user = await User.findOne({ email });
-  if (!user) {
-    return {
-      success: true,
-      message: 'If an account exists with this email address, password recovery instructions have been sent.',
-    };
+// In-memory sliding window for rate-limiting forgot password requests per email (Requirement 21)
+const forgotPasswordAttempts = new Map();
+
+const isRateLimited = (email) => {
+  const now = Date.now();
+  const windowMs = 15 * 60 * 1000; // 15 minute window
+  const maxRequests = 5; // max 5 requests per 15 minutes per email
+
+  const history = forgotPasswordAttempts.get(email) || [];
+  const validHistory = history.filter((timestamp) => now - timestamp < windowMs);
+
+  if (validHistory.length >= maxRequests) {
+    return true;
   }
 
-  // Generate crypto random token
-  const resetToken = crypto.randomBytes(32).toString('hex');
-  const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
-
-  user.resetPasswordToken = hashedToken;
-  user.resetPasswordExpire = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes expiry
-
-  await user.save();
-
-  return {
-    success: true,
-    message: 'If an account exists with this email address, password recovery instructions have been sent.',
-    // Returning resetToken for development / non-SMTP verification flows
-    resetToken,
-  };
+  validHistory.push(now);
+  forgotPasswordAttempts.set(email, validHistory);
+  return false;
 };
 
-export const resetPassword = async (token, newPassword) => {
-  if (!newPassword || newPassword.length < 6) {
-    const error = new Error('Password must be at least 6 characters long.');
+export const forgotPassword = async (email) => {
+  if (!email || typeof email !== 'string') {
+    const error = new Error('A valid email address is required.');
     error.statusCode = 400;
     throw error;
   }
 
-  const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+  const normalizedEmail = email.toLowerCase().trim();
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(normalizedEmail)) {
+    const error = new Error('A valid email address is required.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  // Anti-enumeration: Generic response regardless of whether account exists (Requirement 4, 20)
+  const genericResponse = {
+    success: true,
+    message: 'If an account exists with this email, a password reset link has been sent.',
+  };
+
+  // Lightweight abuse / flood protection (Requirement 21)
+  if (isRateLimited(normalizedEmail)) {
+    return genericResponse;
+  }
+
+  const user = await User.findOne({ email: normalizedEmail });
+
+  if (!user) {
+    return genericResponse;
+  }
+
+  // Generate cryptographically secure random token (32 bytes = 64 hex chars) (Requirement 5)
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+  // Store hashed token and 30-minute expiration (Requirements 6, 7, 8)
+  // Overwrites previous token, invalidating older tokens (Requirements 21, 48)
+  user.resetPasswordToken = hashedToken;
+  user.resetPasswordExpire = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+
+  await user.save({ validateBeforeSave: false });
+
+  // Dispatch Brevo email with the raw unhashed token (Requirement 9, 10)
+  await sendPasswordResetEmail({
+    to: user.email,
+    name: user.name,
+    resetToken,
+  });
+
+  return genericResponse;
+};
+
+export const resetPassword = async (token, newPassword) => {
+  if (!token || typeof token !== 'string' || !token.trim()) {
+    const error = new Error('This password reset link is invalid or has expired.');
+    error.statusCode = 400;
+    error.code = 'INVALID_RESET_TOKEN';
+    throw error;
+  }
+
+  if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 6) {
+    const error = new Error('Password must be at least 6 characters long.');
+    error.statusCode = 400;
+    error.code = 'INVALID_PASSWORD';
+    throw error;
+  }
+
+  const hashedToken = crypto.createHash('sha256').update(token.trim()).digest('hex');
 
   const user = await User.findOne({
     resetPasswordToken: hashedToken,
     resetPasswordExpire: { $gt: Date.now() },
-  });
+  }).select('+password +resetPasswordToken +resetPasswordExpire');
 
   if (!user) {
-    const error = new Error('Invalid or expired password reset token.');
+    const error = new Error('This password reset link is invalid or has expired.');
     error.statusCode = 400;
+    error.code = 'INVALID_RESET_TOKEN';
     throw error;
   }
 
+  // Update password (pre-save hook hashes with bcrypt automatically) (Requirement 14, 42)
   user.password = newPassword;
+
+  // Single-use: invalidate reset token immediately (Requirement 15, 47)
   user.resetPasswordToken = undefined;
   user.resetPasswordExpire = undefined;
 

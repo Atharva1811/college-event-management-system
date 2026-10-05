@@ -83,7 +83,9 @@ api.interceptors.response.use(
 
     const isAuthEndpoint =
       error.config?.url?.includes('/auth/login') ||
-      error.config?.url?.includes('/auth/register');
+      error.config?.url?.includes('/auth/register') ||
+      error.config?.url?.includes('/auth/forgot-password') ||
+      error.config?.url?.includes('/auth/reset-password');
     if (error.response?.status === 401 && !isAuthEndpoint) {
       // Clear token on 401 session expiry and redirect to login if not already on auth page
       localStorage.removeItem('cems_token');

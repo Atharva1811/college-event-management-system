@@ -143,7 +143,7 @@ export const authService = {
       return { message: 'Password has been reset successfully. You can now sign in.' };
     }
 
-    const response = await api.post(`/auth/reset-password/${token}`, { password });
+    const response = await api.post('/auth/reset-password', { token, password });
     return response.data;
   },
 
