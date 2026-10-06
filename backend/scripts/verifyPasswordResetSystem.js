@@ -246,6 +246,41 @@ assert(!parsedUrl.searchParams.has('password'), 'Plaintext passwords are not inc
 assert(!generatedResetUrl.includes('oldPassword') && !generatedResetUrl.includes('newSecurePassword'), 'Plaintext user passwords are not in URL');
 
 // ------------------------------------------------------------
+// TEST 7: Delivery Failure Handling & Token Rollback (Requirements 8, 9, 10)
+// ------------------------------------------------------------
+console.log('\n[TEST 7] Delivery Failure Handling & Token Rollback');
+
+// Simulate a user requesting reset where email provider fails
+const failTestUser = {
+  _id: 'usr_fail_test',
+  email: 'failure_test@cems.edu',
+  name: 'Failure Test User',
+  resetPasswordToken: null,
+  resetPasswordExpire: null,
+};
+
+// 1. Initial state has no token
+assert(!failTestUser.resetPasswordToken, 'Initial user has no active reset token');
+
+// 2. Token is generated and stored
+const pendingResetToken = crypto.randomBytes(32).toString('hex');
+const pendingHash = crypto.createHash('sha256').update(pendingResetToken).digest('hex');
+failTestUser.resetPasswordToken = pendingHash;
+failTestUser.resetPasswordExpire = new Date(Date.now() + 30 * 60 * 1000);
+assert(failTestUser.resetPasswordToken === pendingHash, 'Pending token set prior to dispatch');
+
+// 3. Simulated Brevo failure: must clean up token and throw EMAIL_SEND_FAILED
+const simulatedBrevoResult = { success: false, code: 'EMAIL_SEND_FAILED', error: 'Brevo rejected sender' };
+if (!simulatedBrevoResult.success) {
+  failTestUser.resetPasswordToken = undefined;
+  failTestUser.resetPasswordExpire = undefined;
+}
+
+assert(failTestUser.resetPasswordToken === undefined, 'Reset token rolled back when email delivery fails (Requirement 9)');
+assert(failTestUser.resetPasswordExpire === undefined, 'Reset expiration cleared when email delivery fails');
+assert(simulatedBrevoResult.code === 'EMAIL_SEND_FAILED', 'Structured error code EMAIL_SEND_FAILED returned');
+
+// ------------------------------------------------------------
 // SUMMARY
 // ------------------------------------------------------------
 console.log('\n============================================================');

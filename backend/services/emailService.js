@@ -6,20 +6,60 @@
 
 const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
 
+export const getEmailConfigStatus = () => {
+  const apiKey = (process.env.BREVO_API_KEY || '').trim();
+  const mailFromEmail = (process.env.MAIL_FROM_EMAIL || '').trim();
+  const mailFromName = (process.env.MAIL_FROM_NAME || '').trim();
+  const frontendUrl = (process.env.FRONTEND_URL || '').trim();
+
+  return {
+    isConfigured: Boolean(apiKey),
+    hasSenderEmail: Boolean(mailFromEmail),
+    hasFrontendUrl: Boolean(frontendUrl),
+    senderEmail: mailFromEmail || null,
+    senderName: mailFromName || 'CEMS - College Event Management System',
+    frontendUrl: frontendUrl || 'https://atharva1811.github.io/college-event-management-system',
+  };
+};
+
+export const validateEmailEnv = () => {
+  const config = getEmailConfigStatus();
+  console.log('\n📧 [Email Service] Startup Brevo Environment Check:');
+  if (!config.isConfigured) {
+    console.warn('⚠️  [Email Service] BREVO_API_KEY is not configured in environment variables.');
+  } else {
+    console.log('✅ [Email Service] BREVO_API_KEY is configured.');
+  }
+
+  if (!config.hasSenderEmail) {
+    console.warn('⚠️  [Email Service] MAIL_FROM_EMAIL is not configured in environment. Using fallback sender.');
+  } else {
+    console.log(`✅ [Email Service] MAIL_FROM_EMAIL is configured: ${config.senderEmail}`);
+  }
+
+  if (!config.hasFrontendUrl) {
+    console.warn('⚠️  [Email Service] FRONTEND_URL is not configured in environment. Using fallback GitHub Pages base.');
+  } else {
+    console.log(`✅ [Email Service] FRONTEND_URL is configured: ${config.frontendUrl}`);
+  }
+  console.log('');
+};
+
 export const sendPasswordResetEmail = async ({ to, name, resetToken }) => {
-  const apiKey = process.env.BREVO_API_KEY;
-  const fromEmail = process.env.MAIL_FROM_EMAIL || 'no-reply@cems.edu';
-  const fromName = process.env.MAIL_FROM_NAME || 'CEMS - College Event Management System';
-  const frontendUrl = (process.env.FRONTEND_URL || 'https://atharva1811.github.io/college-event-management-system').replace(/\/$/, '');
+  const apiKey = (process.env.BREVO_API_KEY || '').trim();
+  const fromEmail = (process.env.MAIL_FROM_EMAIL || '').trim() || 'no-reply@cems.edu';
+  const fromName = (process.env.MAIL_FROM_NAME || '').trim() || 'CEMS - College Event Management System';
+  const rawFrontendUrl = (process.env.FRONTEND_URL || '').trim() || 'https://atharva1811.github.io/college-event-management-system';
+  const frontendUrl = rawFrontendUrl.replace(/\/$/, '');
 
   const resetUrl = `${frontendUrl}/reset-password?token=${encodeURIComponent(resetToken)}`;
 
   if (!apiKey) {
-    console.warn('[EmailService] BREVO_API_KEY is not configured in environment. Skipping Brevo API dispatch.');
+    console.error('[BREVO] Dispatch skipped: BREVO_API_KEY is not configured in server environment.');
     return {
       success: false,
-      skipped: true,
-      reason: 'BREVO_API_KEY missing in environment',
+      code: 'BREVO_NOT_CONFIGURED',
+      error: 'BREVO_API_KEY is not configured in server environment.',
       resetUrl,
     };
   }
@@ -91,6 +131,7 @@ College Event Management System (CEMS)
 `;
 
   try {
+    console.log('[FORGOT PASSWORD] Sending email through Brevo');
     const response = await fetch(BREVO_API_URL, {
       method: 'POST',
       headers: {
@@ -115,17 +156,35 @@ College Event Management System (CEMS)
       }),
     });
 
+    console.log(`[BREVO] HTTP status: ${response.status}`);
+
     if (!response.ok) {
       const errData = await response.json().catch(() => ({}));
-      console.error('[EmailService] Brevo API rejected email. HTTP status:', response.status, errData.message || '');
-      return { success: false, error: errData.message || `Brevo HTTP ${response.status}` };
+      const safeErrorMsg = errData.message || errData.code || `HTTP ${response.status}`;
+      console.error(`[BREVO] Error: ${safeErrorMsg}`);
+      if (response.status === 400 && String(safeErrorMsg).toLowerCase().includes('sender')) {
+        console.error(`[BREVO] Sender Configuration Notice: Ensure MAIL_FROM_EMAIL (${fromEmail}) is registered and verified in your Brevo account dashboard.`);
+      }
+      return {
+        success: false,
+        code: 'EMAIL_SEND_FAILED',
+        error: safeErrorMsg,
+      };
     }
 
     const data = await response.json().catch(() => ({}));
-    return { success: true, messageId: data.messageId };
+    console.log('[BREVO] Email accepted by Brevo! MessageId:', data.messageId || 'accepted');
+    return {
+      success: true,
+      messageId: data.messageId,
+    };
   } catch (error) {
-    console.error('[EmailService] Network or provider error while dispatching email:', error.message);
-    return { success: false, error: error.message };
+    console.error('[BREVO] Network or communication error:', error.message);
+    return {
+      success: false,
+      code: 'EMAIL_SEND_FAILED',
+      error: error.message,
+    };
   }
 };
 

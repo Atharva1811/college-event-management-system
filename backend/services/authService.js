@@ -289,9 +289,12 @@ const isRateLimited = (email) => {
 };
 
 export const forgotPassword = async (email) => {
+  console.log('[FORGOT PASSWORD] Request received');
+
   if (!email || typeof email !== 'string') {
     const error = new Error('A valid email address is required.');
     error.statusCode = 400;
+    error.code = 'INVALID_REQUEST';
     throw error;
   }
 
@@ -300,6 +303,7 @@ export const forgotPassword = async (email) => {
   if (!emailRegex.test(normalizedEmail)) {
     const error = new Error('A valid email address is required.');
     error.statusCode = 400;
+    error.code = 'INVALID_REQUEST';
     throw error;
   }
 
@@ -311,18 +315,22 @@ export const forgotPassword = async (email) => {
 
   // Lightweight abuse / flood protection (Requirement 21)
   if (isRateLimited(normalizedEmail)) {
+    console.log('[FORGOT PASSWORD] Request rate-limited; returning anti-enumeration response.');
     return genericResponse;
   }
 
   const user = await User.findOne({ email: normalizedEmail });
+  console.log('[FORGOT PASSWORD] User lookup completed');
 
   if (!user) {
+    console.log('[FORGOT PASSWORD] No user matches email; returning anti-enumeration response.');
     return genericResponse;
   }
 
   // Generate cryptographically secure random token (32 bytes = 64 hex chars) (Requirement 5)
   const resetToken = crypto.randomBytes(32).toString('hex');
   const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+  console.log('[FORGOT PASSWORD] Reset token generated');
 
   // Store hashed token and 30-minute expiration (Requirements 6, 7, 8)
   // Overwrites previous token, invalidating older tokens (Requirements 21, 48)
@@ -330,14 +338,29 @@ export const forgotPassword = async (email) => {
   user.resetPasswordExpire = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
 
   await user.save({ validateBeforeSave: false });
+  console.log('[FORGOT PASSWORD] Reset token stored');
 
   // Dispatch Brevo email with the raw unhashed token (Requirement 9, 10)
-  await sendPasswordResetEmail({
+  const emailResult = await sendPasswordResetEmail({
     to: user.email,
     name: user.name,
     resetToken,
   });
 
+  if (!emailResult.success) {
+    // Revert token in MongoDB if email failed so user is not left with unsent token
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    await user.save({ validateBeforeSave: false });
+    console.error(`[FORGOT PASSWORD] Brevo delivery failed (${emailResult.code || 'EMAIL_SEND_FAILED'}). Reverted token.`);
+
+    const error = new Error('Unable to send password reset email at this time. Please try again later or contact administrator.');
+    error.statusCode = 500;
+    error.code = 'EMAIL_SEND_FAILED';
+    throw error;
+  }
+
+  console.log('[FORGOT PASSWORD] Reset email successfully dispatched.');
   return genericResponse;
 };
 

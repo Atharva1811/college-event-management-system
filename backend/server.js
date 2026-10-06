@@ -8,6 +8,7 @@ import morgan from 'morgan';
 dotenv.config();
 
 import connectDB, { isConnected, getDbStatus } from './config/db.js';
+import { validateEmailEnv, getEmailConfigStatus } from './services/emailService.js';
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import eventRoutes from './routes/eventRoutes.js';
@@ -23,6 +24,9 @@ const app = express();
 
 // Initialize DB connection
 connectDB();
+
+// Validate server-side email & Brevo environment configuration at startup
+validateEmailEnv();
 
 // Security and utility middlewares
 app.use(helmet({ crossOriginResourcePolicy: false }));
@@ -80,6 +84,7 @@ app.get('/', (req, res) => {
 // Production-verified Health check endpoint
 app.get('/api/health', (req, res) => {
   const dbStatus = getDbStatus();
+  const emailStatus = getEmailConfigStatus();
   res.status(200).json({
     success: true,
     message: 'CEMS API is running',
@@ -91,6 +96,13 @@ app.get('/api/health', (req, res) => {
         configured: dbStatus.isConfigured,
         readyState: dbStatus.readyState,
         error: dbStatus.error,
+      },
+      emailService: {
+        provider: 'Brevo',
+        configured: emailStatus.isConfigured,
+        senderConfigured: emailStatus.hasSenderEmail,
+        senderEmail: emailStatus.senderEmail || 'no-reply@cems.edu (default)',
+        frontendUrlConfigured: emailStatus.hasFrontendUrl,
       },
       timestamp: new Date().toISOString(),
       environment: process.env.NODE_ENV || 'development',
