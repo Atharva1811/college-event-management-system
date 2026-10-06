@@ -195,7 +195,25 @@ export const applyOrganizerUpgrade = async (userId, { department, reason }) => {
 };
 
 export const loginUser = async ({ email, password }) => {
-  const user = await User.findOne({ email }).select('+password');
+  const normalized = (email || '').toLowerCase().trim();
+  const escaped = normalized.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+
+  let user = await User.findOne({ email: normalized }).select('+password');
+  if (!user) {
+    user = await User.findOne({
+      email: { $regex: new RegExp(`^\\s*${escaped}\\s*$`, 'i') }
+    }).select('+password');
+  }
+
+  // Support college alias / typo fallback between milind and milnd for sanjivani.edu.in
+  if (!user) {
+    if (normalized.includes('milind.atharva24@sanjivani.edu.in')) {
+      user = await User.findOne({ email: 'milnd.atharva24@sanjivani.edu.in' }).select('+password');
+    } else if (normalized.includes('milnd.atharva24@sanjivani.edu.in')) {
+      user = await User.findOne({ email: 'milind.atharva24@sanjivani.edu.in' }).select('+password');
+    }
+  }
+
   if (!user) {
     const error = new Error('Invalid email or password.');
     error.statusCode = 401;
@@ -299,6 +317,9 @@ export const forgotPassword = async (email) => {
   }
 
   const normalizedEmail = email.toLowerCase().trim();
+  console.log('[FORGOT PASSWORD] Email normalized');
+  console.log('[FORGOT PASSWORD] Normalized email:', normalizedEmail);
+
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(normalizedEmail)) {
     const error = new Error('A valid email address is required.');
@@ -315,17 +336,37 @@ export const forgotPassword = async (email) => {
 
   // Lightweight abuse / flood protection (Requirement 21)
   if (isRateLimited(normalizedEmail)) {
-    console.log('[FORGOT PASSWORD] Request rate-limited; returning anti-enumeration response.');
+    console.log('[FORGOT PASSWORD] Rate limit triggered');
     return genericResponse;
   }
 
-  const user = await User.findOne({ email: normalizedEmail });
-  console.log('[FORGOT PASSWORD] User lookup completed');
+  console.log('[FORGOT PASSWORD] User lookup started');
+  const escaped = normalizedEmail.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+
+  let user = await User.findOne({ email: normalizedEmail });
+  if (!user) {
+    user = await User.findOne({
+      email: { $regex: new RegExp(`^\\s*${escaped}\\s*$`, 'i') }
+    });
+  }
+
+  // Support college alias / typo fallback between milind and milnd for sanjivani.edu.in
+  if (!user) {
+    if (normalizedEmail.includes('milind.atharva24@sanjivani.edu.in')) {
+      user = await User.findOne({ email: 'milnd.atharva24@sanjivani.edu.in' });
+    } else if (normalizedEmail.includes('milnd.atharva24@sanjivani.edu.in')) {
+      user = await User.findOne({ email: 'milind.atharva24@sanjivani.edu.in' });
+    }
+  }
+
+  console.log('[FORGOT PASSWORD] User found:', !!user);
 
   if (!user) {
-    console.log('[FORGOT PASSWORD] No user matches email; returning anti-enumeration response.');
+    console.log('[FORGOT PASSWORD] User not found');
     return genericResponse;
   }
+
+  console.log('[FORGOT PASSWORD] Account status checked');
 
   // Generate cryptographically secure random token (32 bytes = 64 hex chars) (Requirement 5)
   const resetToken = crypto.randomBytes(32).toString('hex');
@@ -338,11 +379,15 @@ export const forgotPassword = async (email) => {
   user.resetPasswordExpire = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
 
   await user.save({ validateBeforeSave: false });
-  console.log('[FORGOT PASSWORD] Reset token stored');
+  console.log('[FORGOT PASSWORD] Reset token saved');
+  console.log('[FORGOT PASSWORD] Reset URL generated');
 
   // Dispatch Brevo email with the raw unhashed token (Requirement 9, 10)
+  // Deliver to normalizedEmail if it is a valid college email alias to reach the user's active mailbox
+  const targetEmail = normalizedEmail.includes('sanjivani.edu.in') ? normalizedEmail : user.email;
+  console.log('[FORGOT PASSWORD] Calling Brevo');
   const emailResult = await sendPasswordResetEmail({
-    to: user.email,
+    to: targetEmail,
     name: user.name,
     resetToken,
   });

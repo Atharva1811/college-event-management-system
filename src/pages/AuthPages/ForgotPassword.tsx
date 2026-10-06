@@ -18,8 +18,15 @@ export default function ForgotPassword() {
     e.preventDefault();
     setError(null);
     setLoading(true);
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setError('Please enter your university email address.');
+      setLoading(false);
+      return;
+    }
+
     try {
-      await authService.forgotPassword(email);
+      await authService.forgotPassword(trimmedEmail);
       setSubmitted(true);
     } catch (err: unknown) {
       const errorObj = err as { response?: { data?: { message?: string } }; message?: string };

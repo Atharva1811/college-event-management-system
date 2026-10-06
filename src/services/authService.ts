@@ -126,6 +126,7 @@ export const authService = {
   },
 
   async forgotPassword(email: string): Promise<{ message: string }> {
+    const trimmedEmail = (email || '').trim();
     if (isMockMode()) {
       await new Promise((res) => setTimeout(res, 400));
       return {
@@ -133,7 +134,7 @@ export const authService = {
       };
     }
 
-    const response = await api.post('/auth/forgot-password', { email });
+    const response = await api.post('/auth/forgot-password', { email: trimmedEmail });
     return response.data;
   },
 

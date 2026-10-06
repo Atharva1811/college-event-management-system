@@ -132,6 +132,7 @@ College Event Management System (CEMS)
 
   try {
     console.log('[FORGOT PASSWORD] Sending email through Brevo');
+    console.log('[BREVO] Request sent');
     const response = await fetch(BREVO_API_URL, {
       method: 'POST',
       headers: {
@@ -156,6 +157,7 @@ College Event Management System (CEMS)
       }),
     });
 
+    console.log(`[BREVO] Response status: ${response.status}`);
     console.log(`[BREVO] HTTP status: ${response.status}`);
 
     if (!response.ok) {

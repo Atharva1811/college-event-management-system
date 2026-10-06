@@ -180,8 +180,8 @@ export const forgotPassword = async (req, res, next) => {
       });
     }
 
-    const { email } = req.body || {};
-    if (!email || typeof email !== 'string' || !email.trim()) {
+    const email = req.body.email?.trim().toLowerCase();
+    if (!email || typeof email !== 'string') {
       return res.status(400).json({
         success: false,
         message: 'A valid email address is required.',
